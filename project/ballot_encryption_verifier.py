@@ -11,7 +11,7 @@ class BallotEncryptionVerifier:
     """
 
     def __init__(self, ballot_dic: dict, generator, public_key, extended_hash, vote_limit_dic):
-        #kwargs: generator, public_key, extended_hash, vote_limit_dic
+        #kwargs: generator, public_key, __extended_hash, vote_limit_dic
         """"""
         self.ballot_dic = ballot_dic
         self.generator = generator
@@ -43,25 +43,3 @@ class BallotEncryptionVerifier:
 
         return not error
 
-
-
-
-
-# TODO: do unit test
-if __name__ == '__main__':
-    constants_d = json_parser.read_json_file('/Users/rainbowhuang/Desktop/ElectionGuard/data_08132020/constants.json')
-    context_d = json_parser.read_json_file('/Users/rainbowhuang/Desktop/ElectionGuard/data_08132020/context.json')
-    ballot_d = json_parser.read_json_file('/Users/rainbowhuang/Desktop/ElectionGuard/data_08132020/encrypted_ballots'\
-                                          '/ballot_ballot-e0c9227e-dd9a-11ea-9295-f45c89ba671b.json')
-    description_dic = json_parser.read_json_file(
-        '/Users/rainbowhuang/Desktop/ElectionGuard/data_08132020/description.json')
-
-    g = int(constants_d.get('generator'))
-    pk = int(context_d.get('elgamal_public_key'))
-    ehash = int(context_d.get('crypto_extended_base_hash'))
-
-    vlc = VoteLimitCounter(description_dic)
-    vote_limit_d = vlc.get_contest_vote_limits()
-
-    bv = BallotEncryptionVerifier(ballot_d, g, pk, ehash, vote_limit_d)
-    bv.verify_all_contests()

@@ -1,4 +1,4 @@
-class FileNameGenerator:
+class FilePathGenerator:
 
     def __init__(self, num_of_guardians=5, threshold=3, num_of_ballots=100, num_of_spoiled_ballots=8):
         """
@@ -9,16 +9,9 @@ class FileNameGenerator:
         :param num_of_spoiled_ballots: number of spoiled ballot files, set default to 8
         """
         #TODO: change to relative paths when push to git
-
-        # constants, relative paths
-        self.BALLOT_FOLDER_PATH = '/Users/rainbowhuang/Desktop/ElectionGuard/data_08042020/encrypted_ballots'
-        #'new_results/encrypted_ballots/'
-        self.COEFF_FILE_PATH = '/Users/rainbowhuang/Desktop/ElectionGuard/data_08042020/coefficients' \
-                               '/coefficient_validation_set_hamilton-county-canvass-board-member-'
-        #'new_results/coefficients/coefficient_validation_set_hamilton-county-canvass-board-member-'
-        self.SPOILED_FOLDER_PATH = '/Users/rainbowhuang/Desktop/ElectionGuard/data_08042020/spoiled_ballots'
-        #'new_results/spoiled_ballots'
+        self.DATA_FOLDER_PATH = '/Users/rainbowhuang/Desktop/ElectionGuard/data_08132020'
         self.FILE_TYPE_SUFFIX = '.json'
+
         # class variables
         self.num_of_guardians = num_of_guardians
         self.threshold = threshold
@@ -31,7 +24,45 @@ class FileNameGenerator:
         :param index: index of a guardian, (0 - number of guardians)
         :return: a string of the coefficient
         """
+        coeff_file_path = self.DATA_FOLDER_PATH + '/coefficients/coefficient_validation_set_hamilton-county-' \
+                                                       'canvass-board-member-'
         if index >= self.num_of_guardians or index < 0:
             raise IndexError("index out of bound")
 
-        return self.COEFF_FILE_PATH + str(index) + self.FILE_TYPE_SUFFIX
+        return self.DATA_FOLDER_PATH + coeff_file_path + str(index) + self.FILE_TYPE_SUFFIX
+
+    def get_context_file_path(self) -> str:
+        """
+
+        :return:
+        """
+        return self.DATA_FOLDER_PATH + '/context' + self.FILE_TYPE_SUFFIX
+
+    def get_constants_file_path(self) -> str:
+        """
+
+        :return:
+        """
+        return self.DATA_FOLDER_PATH + '/constants' + self.FILE_TYPE_SUFFIX
+
+    def get_tally_file_path(self) -> str:
+        """
+
+        :return:
+        """
+        return self.DATA_FOLDER_PATH + '/tally' + self.FILE_TYPE_SUFFIX
+
+    def get_encrypted_ballot_folder_path(self) -> str:
+        """
+
+        :return:
+        """
+
+        return self.DATA_FOLDER_PATH + '/encrypted_ballots'
+
+    def get_spoiled_ballot_folder_path(self) -> str:
+        """
+
+        :return:
+        """
+        return self.DATA_FOLDER_PATH + '/spoiled_ballots'

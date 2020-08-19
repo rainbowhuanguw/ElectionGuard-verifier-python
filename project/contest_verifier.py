@@ -1,5 +1,5 @@
 from project import number, hash, constants
-from project.selection_verifier import BallotSelectionVerifier
+from project.selection_verifier import BallotSelectionVerifier, TallySelectionVerifier
 
 
 class IContestVerifier:
@@ -183,9 +183,25 @@ class BallotContestVerifier(IContestVerifier):
 
 # TODO:
 class TallyContestVerifier(IContestVerifier):
-    def __init__(self, contest_dic: dict, param_dic: dict):
-        self.contest_dic = contest_dic
-        self.selection_names = list(self.contest_dic.get('selections').keys())
 
-    def verify_a_contest(self):
-        pass
+    def __init__(self, contest_dic: dict, generator: int, extended_hash: int, public_keys: list):
+        self.__contest_dic = contest_dic
+        self.__generator = generator
+        self.__extended_hash = extended_hash
+        self.__public_keys = public_keys
+        self.__selections = self.__contest_dic.get('selections')
+        self.__selection_names = list(self.__selections.keys())
+        self.__contest_id = self.__contest_dic.get('object_id')
+
+    def verify_a_contest(self) -> bool:
+        error = False
+        for selection_name in self.__selection_names:
+            selection = self.__selections.get(selection_name)
+            tsv = TallySelectionVerifier(selection, self.__generator, self.__extended_hash, self.__public_keys)
+            if not tsv.verify_a_selection():
+                error = True
+
+        if error:
+            print(self.__contest_id + ' tally decryption failure. ')
+
+        return not error

@@ -73,7 +73,7 @@ class KeyGenerationVerifier:
         """
         if index >= self.num_of_guardians or index < 0:
             raise IndexError("index out of bound")
-        generator = filename_generator.FileNameGenerator(self.num_of_guardians, self.quorum)
+        generator = filename_generator.FilePathGenerator(self.num_of_guardians, self.quorum)
         coeff_file_path = generator.get_guardian_coefficient_file_path(index)
         return json_parser.read_json_file(coeff_file_path)
 
