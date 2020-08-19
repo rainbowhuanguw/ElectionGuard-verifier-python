@@ -138,18 +138,18 @@ def mod(dividend, divisor) -> int:
     return dividend % divisor
 
 
-def multiply(a, b, mod_num=1) -> int:
+def multiply(*args, mod_num=1) -> int:
     """
 
-    :param a:
-    :param b:
     :param mod_num:
     :return:
     """
-    a, b = int(a), int(b)
-    if a >= mod_num:
-        a = a % mod_num
-    if b >= mod_num:
-        b = b % mod_num
+    product = 1
+    for arg in args:
+        if arg >= mod_num:
+            arg = arg % mod_num
+        if product >= mod_num:
+            product = product % mod_num
+        product *= arg
 
-    return a * b % mod_num
+    return product % mod_num

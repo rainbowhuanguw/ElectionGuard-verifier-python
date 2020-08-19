@@ -8,6 +8,10 @@ class BallotSelectionVerifier:
     will be used in ballot_validity_verifier
     """
     def __init__(self, selection_dic: dict, generator: int, public_key: int, extended_hash: int):
+        # constants
+        self.ZRP_PARAM_NAMES = {'pad', 'data'}
+        self.ZQ_PARAM_NAMES = {'challenge', 'response'}
+
         self.selection_dic = selection_dic
         self.public_key = public_key
         self.generator = generator
@@ -15,21 +19,23 @@ class BallotSelectionVerifier:
         self.pad = int(self.selection_dic.get('ciphertext', {}).get('pad'))
         self.data = int(self.selection_dic.get('ciphertext', {}).get('data'))
 
-        # constants
-        self.ZRP_PARAM_NAMES = {'pad', 'data'}
-        self.ZQ_PARAM_NAMES = {'challenge', 'response'}
-
-    def get_pad_data(self) -> tuple:
+    def get_pad(self) -> int:
         """
         get a selection's alpha and beta
         :return:
         """
-        return self.pad, self.data
+        return self.pad
+
+    def get_data(self) -> int:
+        """
+
+        :return:
+        """
+        return self.data
 
     def is_placeholder_selection(self) -> bool:
         """
         check if a selection is a placeholder
-        :param selection_dic:
         :return:
         """
 
@@ -39,19 +45,15 @@ class BallotSelectionVerifier:
     def verify_selection_validity(self) -> bool:
         """
         verify a selection within a contest
-        :param selection_dic:
         :return:
         """
         error = False
 
         # get dictionaries
-        cipher_dic = self.selection_dic.get('ciphertext')
         proof_dic = self.selection_dic.get('proof')
+        cipher_dic = self.selection_dic.get('ciphertext')
 
         # get values
-        pad = int(cipher_dic.get('pad'))  # alpha
-        data = int(cipher_dic.get('data'))  # beta
-
         selection_id = self.selection_dic.get('object_id')
         zero_pad = int(proof_dic.get('proof_zero_pad'))  # a0
         one_pad = int(proof_dic.get('proof_one_pad'))  # a1
@@ -71,17 +73,17 @@ class BallotSelectionVerifier:
             error = True
 
         # point 2: conduct hash computation, c = H(Q-bar, (alpha, beta), (a0, b0), (a1, b1))
-        challenge = hash.hash_elems(self.extended_hash, pad, data, zero_pad, zero_data, one_pad, one_data)
+        challenge = hash.hash_elems(self.extended_hash, self.pad, self.data, zero_pad, zero_data, one_pad, one_data)
 
         # point 4:  c = c0 + c1 mod q is satisfied
         if not self.__check_hash_comp(challenge, zero_challenge, one_challenge):
             error = True
 
         # point 5: check equations
-        if not (self.__check_equation1(pad, zero_pad, zero_challenge, zero_response) and
-                self.__check_equation1(pad, one_pad, one_challenge, one_response) and
-                self.__check_equation2(data, zero_data, zero_challenge, zero_response) and
-                self.__check_equation3(data, one_data, one_challenge, one_response)):
+        if not (self.__check_equation1(self.pad, zero_pad, zero_challenge, zero_response) and
+                self.__check_equation1(self.pad, one_pad, one_challenge, one_response) and
+                self.__check_equation2(self.data, zero_data, zero_challenge, zero_response) and
+                self.__check_equation3(self.data, one_data, one_challenge, one_response)):
             error = True
 
         if error:
@@ -111,7 +113,7 @@ class BallotSelectionVerifier:
     def __check_params_within_zq(self, param_dic: dict) -> bool:
         """
         check if the given values, c0, c1, v0, v1 are each in the set zq
-        :param param_list:
+        :param param_dic:
         :return:
         """
         error = False
@@ -180,7 +182,8 @@ class BallotSelectionVerifier:
 
         return res
 
-    def __check_hash_comp(self, chal, zero_chal, one_chal) -> bool:
+    @staticmethod
+    def __check_hash_comp(chal, zero_chal, one_chal) -> bool:
         """
         check if the equation c = c0 + c1 mod q is satisfied.
         :param chal:
@@ -192,7 +195,7 @@ class BallotSelectionVerifier:
         expected = number.mod(int(zero_chal) + int(one_chal),
                               constants.SMALL_PRIME)
 
-        res = number.equals(chal, expected)
+        res = number.equals(number.mod(chal, constants.SMALL_PRIME), expected)
 
         if not res:
             print("challenge value error.")
@@ -224,6 +227,7 @@ class BallotSelectionVerifier:
 
         return a_res and b_res
 
+
 # TODO:
 class TallySelectionVerifier:
     def __init__(self, selection_dic: dict, generator: int, extended_hash: int, public_keys: list):
@@ -234,7 +238,6 @@ class TallySelectionVerifier:
         self.generator = generator
         self.extended_hash = extended_hash
         self.public_keys = public_keys
-
 
     def get_pad_data(self) -> tuple:
         """

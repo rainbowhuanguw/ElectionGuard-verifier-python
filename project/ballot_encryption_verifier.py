@@ -10,7 +10,8 @@ class BallotEncryptionVerifier:
     2. selection limits are satisfied for each contest (box 4)
     """
 
-    def __init__(self, ballot_dic: dict, generator: int, public_key: int, extended_hash: int, vote_limit_dic: dict):
+    def __init__(self, ballot_dic: dict, generator, public_key, extended_hash, vote_limit_dic):
+        #kwargs: generator, public_key, extended_hash, vote_limit_dic
         """"""
         self.ballot_dic = ballot_dic
         self.generator = generator
@@ -29,8 +30,8 @@ class BallotEncryptionVerifier:
         contests = self.ballot_dic.get('contests')
 
         for contest in contests:
-            cv = BallotContestVerifier(contest, self.generator, self.public_key,
-                                       self.extended_hash, self.vote_limit_dic)
+            cv = BallotContestVerifier(contest, generator=self.generator, public_key=self.public_key,
+                                       extended_hash=self.extended_hash, vote_limit_dic=self.vote_limit_dic)
             res = cv.verify_a_contest()
             if not res:
                 error = True
@@ -49,9 +50,9 @@ class BallotEncryptionVerifier:
 # TODO: do unit test
 if __name__ == '__main__':
     constants_d = json_parser.read_json_file('/Users/rainbowhuang/Desktop/ElectionGuard/data_08132020/constants.json')
-    context_d = json_parser.read_json_file('/Users/rainbowhuang/Desktop/ElectionGuard/data_08042020/context.json')
-    ballot_d = json_parser.read_json_file('/Users/rainbowhuang/Desktop/ElectionGuard/data_08042020/encrypted_ballots'
-                                          '/ballot_ballot-ce63b0b0-d67c-11ea-8412-acde48001122.json')
+    context_d = json_parser.read_json_file('/Users/rainbowhuang/Desktop/ElectionGuard/data_08132020/context.json')
+    ballot_d = json_parser.read_json_file('/Users/rainbowhuang/Desktop/ElectionGuard/data_08132020/encrypted_ballots'\
+                                          '/ballot_ballot-e0c9227e-dd9a-11ea-9295-f45c89ba671b.json')
     description_dic = json_parser.read_json_file(
         '/Users/rainbowhuang/Desktop/ElectionGuard/data_08132020/description.json')
 
