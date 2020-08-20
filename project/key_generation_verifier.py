@@ -2,6 +2,7 @@ from project import json_parser, number
 from project.generator import ParameterGenerator, FilePathGenerator
 from project.interfaces import IVerifier
 
+
 class KeyGenerationVerifier(IVerifier):
     """
     This class checks the key generation information are given correctly for each guardian. (box 2)
