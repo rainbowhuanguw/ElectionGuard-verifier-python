@@ -13,22 +13,20 @@ class AllBallotsVerifier(IVerifier):
         self.limit_counter = limit_counter
 
     def verify_all_ballots(self) -> bool:
-        error = False
+        error = self.initiate_error()
         count = 0
         for ballot_file in glob.glob(self.folder_path + '*.json'):
             ballot_dic = json_parser.read_json_file(ballot_file)
             bvv = BallotEncryptionVerifier(ballot_dic, self.param_g, self.limit_counter)
             res = bvv.verify_all_contests()
             if not res:
-                error = True
+                error = self.set_error()
                 count += 1
 
-        output = "All ballot verification "
         if error:
-            output += "failure. "
+            print("failure. ")
         else:
-            output += "success. "
-        print(output)
+            print("All {i} ballot verification success. ".format(i=count))
 
         return not error
 
@@ -51,7 +49,7 @@ class BallotEncryptionVerifier(IVerifier):
         verify all the contests within a ballot
         :return: True if all contests checked out/no error, False if any error in any selection
         """
-        error = False
+        error = self.initiate_error()
 
         ballot_id = self.ballot_dic.get('object_id')
         contests = self.ballot_dic.get('contests')
@@ -60,7 +58,7 @@ class BallotEncryptionVerifier(IVerifier):
             cv = BallotContestVerifier(contest, self.param_g, self.__limit_counter)
             res = cv.verify_a_contest()
             if not res:
-                error = True
+                error = self.set_error()
 
         if not error:
             print(ballot_id + ' ballot correctness verification success.')

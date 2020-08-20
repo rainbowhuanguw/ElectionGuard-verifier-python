@@ -37,14 +37,14 @@ class BaselineVerifier(IVerifier):
         :return: True if all parameters are verified to fit in designated equations or have specific values,
                 False otherwise
         """
-        error = False
+        error = self.initiate_error()
 
         # check if p and q are the expected values
         if not number.equals(self.large_prime, self.LARGE_PRIME_EXPECTED):
-            error = True
+            error = self.set_error()
             print("Large prime value error. ")
         if not number.equals(self.small_prime, self.SMALL_PRIME_EXPECTED):
-            error = True
+            error = self.set_error()
             print("Small prime value error. ")
 
         # get basic parameters
@@ -53,31 +53,31 @@ class BaselineVerifier(IVerifier):
         # use Miller-Rabin algorithm to check the primality of p and q
         # set iteration to run 50 times by default
         if not number.is_prime(self.large_prime, self.DEFAULT_K):
-            error = True
+            error = self.set_error()
             print("p is not a prime. ")
 
         if not number.is_prime(self.small_prime, self.DEFAULT_K):
-            error = True
+            error = self.set_error()
             print("q is not a prime. ")
 
         # check equation p - 1 = qr
         if not number.equals(self.large_prime - 1, self.small_prime * cofactor):
-            error = True
+            error = self.set_error()
             print("p - 1 does not equals to r * q.")
 
         # check q is not a divisor of r
         if number.is_divisor(self.small_prime, cofactor):
-            error = True
+            error = self.set_error()
             print("q is a divisor of r.")
 
         # check 1 < g < p
         if not number.is_within_range(self.generator, 1, self.large_prime):
-            error = True
+            error = self.set_error()
             print("g is not in the range of 1 to p. ")
 
         # check g^q mod p = 1
         if not number.equals(pow(self.generator, self.small_prime, self.large_prime), 1):
-            error = True
+            error = self.set_error()
             print("g^q mod p does not equal to 1. ")
 
         # print out message
@@ -86,5 +86,6 @@ class BaselineVerifier(IVerifier):
             output += " failure. "
         else:
             output += " success. "
+
         print(output)
         return not error

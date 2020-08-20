@@ -4,7 +4,7 @@ from project.generator import ParameterGenerator
 from project.interfaces import IVerifier, ISelectionVerifier
 
 
-class BallotSelectionVerifier(IVerifier, ISelectionVerifier):
+class BallotSelectionVerifier(ISelectionVerifier):
     """
     This class is responsible for verify one selection at a time,
     its main purpose is to confirm selection validity,
@@ -48,7 +48,7 @@ class BallotSelectionVerifier(IVerifier, ISelectionVerifier):
         verify a selection within a contest
         :return:
         """
-        error = False
+        error = self.initiate_error()
 
         # get dictionaries
         proof_dic = self.selection_dic.get('proof')
@@ -68,11 +68,11 @@ class BallotSelectionVerifier(IVerifier, ISelectionVerifier):
         # point 1: check alpha, beta, a0, b0, a1, b1 are all in set Zrp
         if not (self.__check_params_within_zrp(cipher_dic) and
                 self.__check_params_within_zrp(proof_dic)):
-            error = True
+            error = self.set_error()
 
         # point 3: check if the given values, c0, c1, v0, v1 are each in the set zq
         if not self.__check_params_within_zq(proof_dic):
-            error = True
+            error = self.set_error()
 
         # point 2: conduct hash computation, c = H(Q-bar, (alpha, beta), (a0, b0), (a1, b1))
         challenge = number.hash_elems(self.extended_hash, self.pad, self.data,
@@ -80,14 +80,14 @@ class BallotSelectionVerifier(IVerifier, ISelectionVerifier):
 
         # point 4:  c = c0 + c1 mod q is satisfied
         if not self.__check_hash_comp(challenge, zero_challenge, one_challenge):
-            error = True
+            error = self.set_error()
 
         # point 5: check equations
         if not (self.__check_equation1(self.pad, zero_pad, zero_challenge, zero_response) and
                 self.__check_equation1(self.pad, one_pad, one_challenge, one_response) and
                 self.__check_equation2(self.data, zero_data, zero_challenge, zero_response) and
                 self.__check_equation3(self.data, one_data, one_challenge, one_response)):
-            error = True
+            error = self.set_error()
 
         if error:
             print(selection_id + ' validity verification failure.')
@@ -101,14 +101,14 @@ class BallotSelectionVerifier(IVerifier, ISelectionVerifier):
         :param param_dic: either ciphertext_dic or proof_dic generated in __verify_a_selection
         :return: True if all parameters in this given dict are within set zrp
         """
-        error = False
+        error = self.initiate_error()
         # all the relevant parameters in one loop
         for (k, v) in param_dic.items():
             # if it's a desired field, verify the number
             if any(name in k for name in self.ZRP_PARAM_NAMES):
                 res = number.is_within_set_zrp(v)
                 if not res:
-                    error = True
+                    error = self.set_error()
                     print('parameter error, {name} is not in set Zrp. '.format(name=k))
 
         return not error
@@ -119,13 +119,13 @@ class BallotSelectionVerifier(IVerifier, ISelectionVerifier):
         :param param_dic:
         :return:
         """
-        error = False
+        error = self.initiate_error()
 
         for (k, v) in param_dic.items():
             if any(name in k for name in self.ZQ_PARAM_NAMES):
                 res = number.is_within_set_zq(v)
                 if not res:
-                    error = True
+                    error = self.set_error()
                     print('parameter error, {name} is not in set Zq. '.format(name=k))
 
         return not error

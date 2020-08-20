@@ -20,12 +20,12 @@ class KeyGenerationVerifier(IVerifier):
         verify all guardians' key generation info by examining challenge values and equations
         :return: True if no error were found in any guardian, False if some errors found in some or all guardians
         """
-        error = False
+        error = self.initiate_error()
 
         for i in range(self.num_of_guardians):
             res = self.verify_one_guardian(i)
             if not res:
-                error = True
+                error = self.set_error()
                 print("guardian {index} key generation verification failure. ".format(index=i))
 
         if not error:
@@ -41,11 +41,9 @@ class KeyGenerationVerifier(IVerifier):
         """
         coefficients_dic = self.__get_guardian_coeff_by_index(index)
 
-        error = False
-
         # loop through every proof
         for i in range(self.quorum):
-            error = False
+            error = self.initiate_error()
             # get given values
             coeff_proofs_dic = coefficients_dic.get('coefficient_proofs')[i]
             response = coeff_proofs_dic.get('response')      # u
@@ -58,11 +56,11 @@ class KeyGenerationVerifier(IVerifier):
 
             # check if the computed challenge value matches the given
             if not number.equals(challenge, challenge_computed):
-                error = True
+                error = self.set_error()
                 print("guardian {i}, quorum {j}, challenge number error. ".format(i=index, j=i))
             # check equation
             if not self.__verify_equation(response, commitment, public_key, challenge):
-                error = True
+                error = self.set_error()
                 print("guardian {i}, quorum {j}, equation error. ".format(i=index, j=i))
 
         return not error

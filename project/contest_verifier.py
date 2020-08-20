@@ -28,7 +28,7 @@ class BallotContestVerifier(IVerifier, IContestVerifier):
         :return
         """
         # initialize errors to false
-        encryption_error, limit_error = False, False
+        encryption_error, limit_error = self.initiate_error(), self.initiate_error()
         # get variables
         selections_list = self.contest_dic.get('ballot_selections')
         vote_limit = int(self.vote_limit_dic.get(self.contest_id))
@@ -49,12 +49,12 @@ class BallotContestVerifier(IVerifier, IContestVerifier):
             # check validity of a selection
             is_correct = sv.verify_selection_validity()
             if not is_correct:
-                encryption_error = True
+                encryption_error = self.set_error()
 
             # check selection limit, whether each a and b are in zrp
             is_within_limit = sv.verify_selection_limit()
             if not is_within_limit:
-                limit_error = True
+                limit_error = self.set_error()
 
             # get placeholder counts
             if sv.is_placeholder_selection():
@@ -63,7 +63,7 @@ class BallotContestVerifier(IVerifier, IContestVerifier):
         # verify the placeholder numbers match the maximum votes allowed - contest check
         placeholder_match = self.__match_vote_limit_by_contest(self.contest_id, placeholder_count)
         if not placeholder_match:
-            limit_error = True
+            limit_error = self.set_error()
 
         challenge_computed = number.hash_elems(self.extended_hash, selection_alpha_product, selection_beta_product,
                                                self.contest_alpha, self.contest_beta)
@@ -71,7 +71,7 @@ class BallotContestVerifier(IVerifier, IContestVerifier):
         # check if given contest challenge matches the computation
         challenge_match = self.__check_challenge(challenge_computed)
         if not challenge_match:
-            limit_error = True
+            limit_error = self.set_error()
 
         # check equations
         # TODO: error in equation 2
@@ -79,7 +79,7 @@ class BallotContestVerifier(IVerifier, IContestVerifier):
         equ2_check = self.__check_equation2(selection_beta_product, vote_limit)
 
         if not equ1_check or not equ2_check:
-            limit_error = True
+            limit_error = self.set_error()
 
         if encryption_error or limit_error:
             output = self.contest_id + ' verification failure:'
@@ -192,12 +192,12 @@ class TallyContestVerifier(IVerifier, IContestVerifier):
 
         :return:
         """
-        error = False
+        error = self.initiate_error()
         for selection_name in self.selection_names:
             selection = self.selections.get(selection_name)
             tsv = TallySelectionVerifier(selection, self.param_g)
             if not tsv.verify_a_selection():
-                error = True
+                error = self.set_error()
 
         if error:
             print(self.contest_id + ' tally decryption failure. ')

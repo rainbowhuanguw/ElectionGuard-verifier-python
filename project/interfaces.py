@@ -10,8 +10,16 @@ class IVerifier:
         self.large_prime = self.param_g.get_large_prime()
         self.small_prime = self.param_g.get_small_prime()
 
+    @staticmethod
+    def set_error() -> bool:
+        return True
 
-class IContestVerifier:
+    @staticmethod
+    def initiate_error() -> bool:
+        return False
+
+
+class IContestVerifier(IVerifier):
     """
     Contest verifier as an interface
     """
@@ -20,7 +28,7 @@ class IContestVerifier:
         pass
 
 
-class ISelectionVerifier:
+class ISelectionVerifier(IVerifier):
     def get_pad(self) -> int:
         pass
 

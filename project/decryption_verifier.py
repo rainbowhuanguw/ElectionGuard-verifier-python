@@ -38,12 +38,12 @@ class TallyDecryptionVerifier(IVerifier):
 
         :return:
         """
-        error = False
+        error = self.initiate_error()
 
         spoiled_ballot_names = list(self.spoiled_ballots.keys())
         for spoiled_ballot_name in spoiled_ballot_names:
             if not self.verify_a_spoiled_ballot(spoiled_ballot_name):
-                error = True
+                error = self.set_error()
 
         output = "Spoiled ballot decryption"
         if error:
@@ -61,12 +61,12 @@ class TallyDecryptionVerifier(IVerifier):
         :param tally_name:
         :return:
         """
-        error = False
+        error = self.initiate_error()
         for contest_name in contest_names:
             contest = contest_dic.get(contest_name)
             tcv = TallyContestVerifier(contest, self.param_g)
             if not tcv.verify_a_contest():
-                error = True
+                error = self.set_error()
 
         output = tally_name + ' decryption verification '
         if error:

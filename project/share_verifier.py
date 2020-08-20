@@ -15,10 +15,10 @@ class ShareVerifier(IVerifier):
         verify all shares of a tally decryption
         :return:
         """
-        error = False
+        error = self.initiate_error()
         for index, share in enumerate(self.shares):
             if not self.__verify_a_share(share):
-                error = True
+                error = self.set_error()
                 print("Guardian {} decryption error. ".format(index))
 
         return not error
@@ -29,7 +29,7 @@ class ShareVerifier(IVerifier):
         :param share_dic:
         :return:
         """
-        error = False
+        error = self.initiate_error()
         pad, data = self.get_pad_data(share_dic)
         response = share_dic.get('proof', {}).get('response')
         # check if the response vi is in the set Zq
@@ -39,7 +39,7 @@ class ShareVerifier(IVerifier):
         pad_data_correctness = self.__check_pad_data(pad, data)
 
         if not response_correctness or not pad_data_correctness:
-            error = True
+            error = self.set_error()
             print("partial decryption failure. ")
 
         return not error
