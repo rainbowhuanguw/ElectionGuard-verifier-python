@@ -194,6 +194,10 @@ class TallyContestVerifier(IContestVerifier):
         self.__contest_id = self.__contest_dic.get('object_id')
 
     def verify_a_contest(self) -> bool:
+        """
+
+        :return:
+        """
         error = False
         for selection_name in self.__selection_names:
             selection = self.__selections.get(selection_name)

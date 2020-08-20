@@ -11,7 +11,7 @@ class ShareVerifier:
         self.__extended_hash = extended_hash
         self.__public_keys = public_keys
 
-    def verify_all_shares(self):
+    def verify_all_shares(self) -> bool:
         """
         verify all shares of a tally decryption
         :return:
@@ -20,9 +20,11 @@ class ShareVerifier:
         for index, share in enumerate(self.__shares):
             if not self.__verify_a_share(share):
                 error = True
-                print("Trustee {} decryption error. ".format(index))
+                print("Guardian {} decryption error. ".format(index))
 
-    def __verify_a_share(self, share_dic: dict):
+        return not error
+
+    def __verify_a_share(self, share_dic: dict) -> bool:
         """
         verify one share at a time
         :param share_dic:
@@ -41,15 +43,18 @@ class ShareVerifier:
             error = True
             print("partial decryption failure. ")
 
-    def get_pad_data(self, share_dic: dict) -> tuple:
+        return not error
+
+    @staticmethod
+    def get_pad_data(share_dic: dict) -> tuple:
         """
         return the pad and data of a share within a selection
         :return:
         """
-        return share_dic.get('proof', {}).get('pad'), \
-               share_dic.get('proof', {}).get('data')
+        return share_dic.get('proof', {}).get('pad'), share_dic.get('proof', {}).get('data')
 
-    def __check_response(self, response: int) -> bool:
+    @staticmethod
+    def __check_response(response: int) -> bool:
         """
         check if the response vi is in the set Zq
         :param response:
@@ -61,7 +66,8 @@ class ShareVerifier:
 
         return res
 
-    def __check_pad_data(self, pad: int, data: int) -> bool:
+    @staticmethod
+    def __check_pad_data(pad: int, data: int) -> bool:
         """
         check if the given ai, bi are both in set Zrp
         :param pad:
@@ -101,7 +107,6 @@ class ShareVerifier:
         :param pad:
         :param public_key:
         :param challenge:
-        :param index:
         :return:
         """
         left = pow(self.__generator, response, constants.LARGE_PRIME)
@@ -114,7 +119,7 @@ class ShareVerifier:
 
         return res
 
-    def __check_equation2(self, response:int, data: int, challenge: int, partial_decrypt: int) -> bool:
+    def __check_equation2(self, response: int, data: int, challenge: int, partial_decrypt: int) -> bool:
         """
         check A^vi = bi * (Mi^ci) mod p
         :param response:

@@ -30,8 +30,8 @@ class BallotEncryptionVerifier:
         contests = self.ballot_dic.get('contests')
 
         for contest in contests:
-            cv = BallotContestVerifier(contest, generator=self.generator, public_key=self.public_key,
-                                       extended_hash=self.extended_hash, vote_limit_dic=self.vote_limit_dic)
+            cv = BallotContestVerifier(contest, self.generator, self.public_key,
+                                       self.extended_hash, self.vote_limit_dic)
             res = cv.verify_a_contest()
             if not res:
                 error = True
