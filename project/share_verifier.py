@@ -1,15 +1,14 @@
-from project import number, hash, constants
+from project import number
+from project.generator import ParameterGenerator
+from project.interfaces import IVerifier
 
 
-class ShareVerifier:
-    def __init__(self, shares: list, selection_pad: int, selection_data: int, generator: int,
-                 extended_hash: int, public_keys: list):
-        self.__shares = shares
-        self.__selection_pad = selection_pad
-        self.__selection_data = selection_data
-        self.__generator = generator
-        self.__extended_hash = extended_hash
-        self.__public_keys = public_keys
+class ShareVerifier(IVerifier):
+    def __init__(self, shares: list, param_g: ParameterGenerator, selection_pad: int, selection_data: int):
+        super().__init__(param_g)
+        self.shares = shares
+        self.selection_pad = selection_pad
+        self.selection_data = selection_data
 
     def verify_all_shares(self) -> bool:
         """
@@ -17,7 +16,7 @@ class ShareVerifier:
         :return:
         """
         error = False
-        for index, share in enumerate(self.__shares):
+        for index, share in enumerate(self.shares):
             if not self.__verify_a_share(share):
                 error = True
                 print("Guardian {} decryption error. ".format(index))
@@ -90,8 +89,8 @@ class ShareVerifier:
         check if the challenge values ci satisfies ci = H(Q-bar, (A,b), (ai, bi), Mi)
         :return:
         """
-        challenge_computed = hash.hash_elems(self.__extended_hash, self.__selection_pad, self.__selection_data,
-                                             pad, data, partial_decrypt)
+        challenge_computed = number.hash_elems(self.extended_hash, self.selection_pad, self.selection_data,
+                                               pad, data, partial_decrypt)
 
         res = number.equals(challenge, challenge_computed)
 
@@ -109,8 +108,8 @@ class ShareVerifier:
         :param challenge:
         :return:
         """
-        left = pow(self.__generator, response, constants.LARGE_PRIME)
-        right = number.mod(pad * pow(public_key, challenge, constants.LARGE_PRIME), constants.LARGE_PRIME)
+        left = pow(self.generator, response, self.large_prime)
+        right = number.mod(pad * pow(public_key, challenge, self.large_prime), self.large_prime)
 
         res = number.equals(left, right)
 
@@ -128,8 +127,8 @@ class ShareVerifier:
         :param partial_decrypt:
         :return:
         """
-        left = pow(self.__selection_pad, response, constants.LARGE_PRIME)
-        right = number.mod(data * pow(partial_decrypt, challenge, constants.LARGE_PRIME), constants.LARGE_PRIME)
+        left = pow(self.selection_pad, response, self.large_prime)
+        right = number.mod(data * pow(partial_decrypt, challenge, self.large_prime), self.large_prime)
 
         res = number.equals(left, right)
         if not res:

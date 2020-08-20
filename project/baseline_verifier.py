@@ -1,39 +1,35 @@
-from project import number, json_parser, constants
+from project import number, json_parser
+from project.generator import ParameterGenerator
+from project.interfaces import IVerifier
 
 
-class BaselineVerifier:
+class BaselineVerifier(IVerifier):
     """
     This class tests that whether the given parameters p, q, r, g equal to expected values. (box 1)
     """
-
-    def __init__(self, constants_dic: dict):
-        # raises type error if the input is not a dict
-        if not isinstance(constants_dic, dict):
-            raise TypeError("constants_dic should be in type dict. ")
+    def __init__(self, param_g: ParameterGenerator):
+        super().__init__(param_g)
 
         # constants
         self.DICT_KEYS = {'cofactor', 'generator', 'large_prime', 'small_prime'}
         self.DEFAULT_K = 50
-
-        self.constants_dic = constants_dic
-        # raises a value error if the input param doesn't include all the constant fields
-        if not self.DICT_KEYS.issubset(constants_dic.keys()):
-            raise ValueError("constants_dic should include all the parameters, including p, q, r, g, inverse g")
-
-    def match_prime(self, param_name: str) -> bool:
-        """
-        verify if p or q matches the expected value
-        :param param_name: large_prime, small_prime
-        :return: True if the input parameter equals to the expected
-        """
-        try:
-            param_actual = self.constants_dic.get(param_name)
-            if param_name == 'large_prime':
-                return number.equals(param_actual, constants.LARGE_PRIME)
-            elif param_name == 'small_prime':
-                return number.equals(param_actual, constants.SMALL_PRIME)
-        except ValueError:
-            print("Invalid parameter")
+        self.LARGE_PRIME_EXPECTED = (int(('''104438888141315250669175271071662438257996424904738378038423348328
+3953907971553643537729993126875883902173634017777416360502926082946377942955704498
+5420976148418252467735806893983863204397479111608977315510749039672438834271329188
+1374801626975452234350528589881677721176191239277291448552115552164104927344620757
+8961939840619466145806859275053476560973295158703823395710210329314709715239251736
+5523840808458360487786673189314183384224438910259118847234330847012077719019445932
+8662497991739135056466263272370300796422984915475619689061525228653308964318490270
+6926081744149289517418249153634178342075381874131646013444796894582106870531535803
+6662545796026324531037414525697939055519015418561732513850474148403927535855819099
+5015804625681054267836812127850996052095762473794291460031064660979266501285839738
+1435755902851312071248102599442308951327039250818892493767423329663783709190716162
+0235296692173009397831714158082331468230007669177892861540060422814237337064629052
+4377485454312723950024587358201266366643058386277816736954760301634424272959224454
+4608279405999759391099775667746401633668308698186721172238255007962658564443858927
+6348504157753488390520266757856948263869301753031434500465754608438799417919463132
+99322976993405829119''').replace('\n', '')))
+        self.SMALL_PRIME_EXPECTED = pow(2, 256) - 189
 
     def verify_all_params(self) -> bool:
         """
@@ -44,68 +40,51 @@ class BaselineVerifier:
         error = False
 
         # check if p and q are the expected values
-        if not self.match_prime('large_prime'):
-            self.__set_error(error)
-            print("The actual p value doesn't equal to the expected. ")
-        if not self.match_prime('small_prime'):
-            self.__set_error(error)
-            print("The actual q value doesn't equal to the expected. ")
+        if not number.equals(self.large_prime, self.LARGE_PRIME_EXPECTED):
+            error = True
+            print("Large prime value error. ")
+        if not number.equals(self.small_prime, self.SMALL_PRIME_EXPECTED):
+            error = True
+            print("Small prime value error. ")
 
         # get basic parameters
-        p = self.constants_dic.get('large_prime')
-        q = self.constants_dic.get('small_prime')
-        r = self.constants_dic.get('cofactor')
-        g = self.constants_dic.get('generator')
+        cofactor = self.param_g.get_cofactor()
 
         # use Miller-Rabin algorithm to check the primality of p and q
         # set iteration to run 50 times by default
-        if not number.is_prime(p, self.DEFAULT_K):
-            self.__set_error(error)
+        if not number.is_prime(self.large_prime, self.DEFAULT_K):
+            error = True
             print("p is not a prime. ")
 
-        if not number.is_prime(q, self.DEFAULT_K):
-            self.__set_error(error)
+        if not number.is_prime(self.small_prime, self.DEFAULT_K):
+            error = True
             print("q is not a prime. ")
 
         # check equation p - 1 = qr
-        if not number.equals(p - 1, q * r):
-            self.__set_error(error)
+        if not number.equals(self.large_prime - 1, self.small_prime * cofactor):
+            error = True
             print("p - 1 does not equals to r * q.")
 
         # check q is not a divisor of r
-        if number.is_divisor(q, r):
-            self.__set_error(error)
+        if number.is_divisor(self.small_prime, cofactor):
+            error = True
             print("q is a divisor of r.")
 
         # check 1 < g < p
-        if not number.is_within_range(g, 1, p):
-            self.__set_error(error)
+        if not number.is_within_range(self.generator, 1, self.large_prime):
+            error = True
             print("g is not in the range of 1 to p. ")
 
         # check g^q mod p = 1
-        if not number.equals(pow(g, q, p), 1):
-            self.__set_error(error)
+        if not number.equals(pow(self.generator, self.small_prime, self.large_prime), 1):
+            error = True
             print("g^q mod p does not equal to 1. ")
 
+        # print out message
+        output = "Baseline parameter check"
+        if error:
+            output += " failure. "
+        else:
+            output += " success. "
+        print(output)
         return not error
-
-    @staticmethod
-    def __set_error(error):
-        """
-        setter method to set error to True
-        :param error: the error variable being passed in
-        :return: none
-        """
-        error = True
-
-
-#TODO: test in main function, create unit test and move it to test file
-if __name__ == "__main__":
-    constants_dic = json_parser.read_json_file('/Users/rainbowhuang/Desktop/ElectionGuard/data_08132020/constants.json')
-    #print(constants_dic)
-    bv = BaselineVerifier(constants_dic)
-    res = bv.verify_all_params()
-    if not res:
-        print("Baseline parameter check failure. ")
-    else:
-        print("Baseline parameter check success. ")

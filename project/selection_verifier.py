@@ -1,6 +1,7 @@
-from project import constants, hash, number
+from project import number
 from project.share_verifier import ShareVerifier
-
+from project.generator import ParameterGenerator
+from project.interfaces import IVerifier
 
 class ISelectionVerifier:
     def get_pad(self) -> int:
@@ -10,37 +11,35 @@ class ISelectionVerifier:
         pass
 
 
-class BallotSelectionVerifier(ISelectionVerifier):
+class BallotSelectionVerifier(IVerifier, ISelectionVerifier):
     """
     This class is responsible for verify one selection at a time,
     its main purpose is to confirm selection validity,
     will be used in ballot_validity_verifier
     """
-    def __init__(self, selection_dic: dict, generator: int, public_key: int, extended_hash: int):
+    def __init__(self, selection_dic: dict, param_g: ParameterGenerator):
+        super().__init__(param_g)
         # constants
         self.ZRP_PARAM_NAMES = {'pad', 'data'}
         self.ZQ_PARAM_NAMES = {'challenge', 'response'}
 
-        self.__selection_dic = selection_dic
-        self.__public_key = public_key
-        self.__generator = generator
-        self.__extended_hash = extended_hash
-        self.__pad = int(self.__selection_dic.get('ciphertext', {}).get('pad'))
-        self.__data = int(self.__selection_dic.get('ciphertext', {}).get('data'))
+        self.selection_dic = selection_dic
+        self.pad = int(self.selection_dic.get('ciphertext', {}).get('pad'))
+        self.data = int(self.selection_dic.get('ciphertext', {}).get('data'))
 
     def get_pad(self) -> int:
         """
         get a selection's alpha and beta
         :return:
         """
-        return self.__pad
+        return self.pad
 
     def get_data(self) -> int:
         """
 
         :return:
         """
-        return self.__data
+        return self.data
 
     def is_placeholder_selection(self) -> bool:
         """
@@ -48,7 +47,7 @@ class BallotSelectionVerifier(ISelectionVerifier):
         :return:
         """
 
-        return bool(self.__selection_dic.get('is_placeholder_selection'))
+        return bool(self.selection_dic.get('is_placeholder_selection'))
 
     # --------------------------------------- validity check ----------------------------------------------------
     def verify_selection_validity(self) -> bool:
@@ -59,11 +58,11 @@ class BallotSelectionVerifier(ISelectionVerifier):
         error = False
 
         # get dictionaries
-        proof_dic = self.__selection_dic.get('proof')
-        cipher_dic = self.__selection_dic.get('ciphertext')
+        proof_dic = self.selection_dic.get('proof')
+        cipher_dic = self.selection_dic.get('ciphertext')
 
         # get values
-        selection_id = self.__selection_dic.get('object_id')
+        selection_id = self.selection_dic.get('object_id')
         zero_pad = int(proof_dic.get('proof_zero_pad'))  # a0
         one_pad = int(proof_dic.get('proof_one_pad'))  # a1
         zero_data = int(proof_dic.get('proof_zero_data'))  # b0
@@ -83,18 +82,18 @@ class BallotSelectionVerifier(ISelectionVerifier):
             error = True
 
         # point 2: conduct hash computation, c = H(Q-bar, (alpha, beta), (a0, b0), (a1, b1))
-        challenge = hash.hash_elems(self.__extended_hash, self.__pad,
-                                    self.__data, zero_pad, zero_data, one_pad, one_data)
+        challenge = number.hash_elems(self.generator, self.pad, self.data,
+                                      zero_pad, zero_data, one_pad, one_data)
 
         # point 4:  c = c0 + c1 mod q is satisfied
         if not self.__check_hash_comp(challenge, zero_challenge, one_challenge):
             error = True
 
         # point 5: check equations
-        if not (self.__check_equation1(self.__pad, zero_pad, zero_challenge, zero_response) and
-                self.__check_equation1(self.__pad, one_pad, one_challenge, one_response) and
-                self.__check_equation2(self.__data, zero_data, zero_challenge, zero_response) and
-                self.__check_equation3(self.__data, one_data, one_challenge, one_response)):
+        if not (self.__check_equation1(self.pad, zero_pad, zero_challenge, zero_response) and
+                self.__check_equation1(self.pad, one_pad, one_challenge, one_response) and
+                self.__check_equation2(self.data, zero_data, zero_challenge, zero_response) and
+                self.__check_equation3(self.data, one_data, one_challenge, one_response)):
             error = True
 
         if error:
@@ -146,8 +145,8 @@ class BallotSelectionVerifier(ISelectionVerifier):
         :param x_res:
         :return:
         """
-        equ1_left = pow(self.__generator, x_res, constants.LARGE_PRIME)
-        equ1_right = number.mod(x_pad * pow(pad, x_chal, constants.LARGE_PRIME), constants.LARGE_PRIME)
+        equ1_left = pow(self.generator, x_res, self.large_prime)
+        equ1_right = number.mod(x_pad * pow(pad, x_chal, self.large_prime), self.large_prime)
         res = number.equals(equ1_left, equ1_right)
 
         if not res:
@@ -164,8 +163,8 @@ class BallotSelectionVerifier(ISelectionVerifier):
         :param zero_res:
         :return:
         """
-        equ2_left = pow(self.__public_key, zero_res, constants.LARGE_PRIME)
-        equ2_right = number.mod(zero_data * pow(data, zero_chal, constants.LARGE_PRIME), constants.LARGE_PRIME)
+        equ2_left = pow(self.public_key, zero_res, self.large_prime)
+        equ2_right = number.mod(zero_data * pow(data, zero_chal, self.large_prime), self.large_prime)
 
         res = number.equals(equ2_left, equ2_right)
 
@@ -183,9 +182,9 @@ class BallotSelectionVerifier(ISelectionVerifier):
         :param one_res:
         :return:
         """
-        equ3_left = number.mod(pow(self.__generator, one_chal, constants.LARGE_PRIME) *
-                               pow(self.__public_key, one_res, constants.LARGE_PRIME), constants.LARGE_PRIME)
-        equ3_right = number.mod(one_data * pow(data, one_chal, constants.LARGE_PRIME), constants.LARGE_PRIME)
+        equ3_left = number.mod(pow(self.generator, one_chal, self.large_prime) *
+                               pow(self.public_key, one_res, self.large_prime), self.large_prime)
+        equ3_right = number.mod(one_data * pow(data, one_chal, self.large_prime), self.large_prime)
 
         res = number.equals(equ3_left, equ3_right)
         if not res:
@@ -193,8 +192,7 @@ class BallotSelectionVerifier(ISelectionVerifier):
 
         return res
 
-    @staticmethod
-    def __check_hash_comp(chal, zero_chal, one_chal) -> bool:
+    def __check_hash_comp(self, chal, zero_chal, one_chal) -> bool:
         """
         check if the equation c = c0 + c1 mod q is satisfied.
         :param chal:
@@ -203,10 +201,9 @@ class BallotSelectionVerifier(ISelectionVerifier):
         :return:
         """
         # calculated expected challenge value: c0 + c1 mod q
-        expected = number.mod(int(zero_chal) + int(one_chal),
-                              constants.SMALL_PRIME)
+        expected = number.mod(int(zero_chal) + int(one_chal), self.small_prime)
 
-        res = number.equals(number.mod(chal, constants.SMALL_PRIME), expected)
+        res = number.equals(number.mod(chal, self.small_prime), expected)
 
         if not res:
             print("challenge value error.")
@@ -227,8 +224,8 @@ class BallotSelectionVerifier(ISelectionVerifier):
         :return: True if a and b both within set zrp
         """
 
-        a_res = number.is_within_set_zrp(self.__pad)
-        b_res = number.is_within_set_zrp(self.__data)
+        a_res = number.is_within_set_zrp(self.pad)
+        b_res = number.is_within_set_zrp(self.data)
 
         if not a_res:
             print('selection pad/a value error. ')
@@ -239,16 +236,14 @@ class BallotSelectionVerifier(ISelectionVerifier):
         return a_res and b_res
 
 
-# TODO:
-class TallySelectionVerifier(ISelectionVerifier):
-    def __init__(self, selection_dic: dict, generator: int, extended_hash: int, public_keys: list):
+class TallySelectionVerifier(IVerifier, ISelectionVerifier):
+    def __init__(self, selection_dic: dict, param_g: ParameterGenerator):
+        super().__init__(param_g)
         self.__selection_dic = selection_dic
         self.__selection_id = selection_dic.get('object_id')
         self.__pad = int(self.__selection_dic.get('message', {}).get('pad'))
         self.__data = int(self.__selection_dic.get('message', {}).get('data'))
-        self.__generator = generator
-        self.__extended_hash = extended_hash
-        self.__public_keys = public_keys
+        self.__public_keys = param_g.get_public_keys_of_all_guardians()
 
     def get_pad(self) -> int:
         """
@@ -266,7 +261,7 @@ class TallySelectionVerifier(ISelectionVerifier):
         :return:
         """
         shares = self.__selection_dic.get('shares')
-        sv = ShareVerifier(shares, self.__pad, self.__data, self.__generator, self.__extended_hash, self.__public_keys)
+        sv = ShareVerifier(shares, self.param_g, self.__pad, self.__data)
         res = sv.verify_all_shares()
         if not res:
             print(self.__selection_id + " tally verification error. ")

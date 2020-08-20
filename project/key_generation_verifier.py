@@ -1,17 +1,18 @@
-from project import generator, json_parser, hash, number, constants
+from project import json_parser, number
+from project.generator import ParameterGenerator, FilePathGenerator
+from project.interfaces import IVerifier
 
-
-class KeyGenerationVerifier:
+class KeyGenerationVerifier(IVerifier):
     """
     This class checks the key generation information are given correctly for each guardian. (box 2)
     """
 
-    def __init__(self, constants_dic: dict, context_dic: dict):
-        self.generator = constants_dic.get('generator')
-        self.joint_public_key = context_dic.get('elgamal_public_key')
-        self.num_of_guardians = context_dic.get('number_of_guardians')
-        self.quorum = context_dic.get('quorum')
-        self.base_hash = context_dic.get('crypto_base_hash')
+    def __init__(self, param_g: ParameterGenerator, path_g: FilePathGenerator):
+        super().__init__(param_g)
+        self.path_g = path_g
+        self.num_of_guardians = param_g.get_num_of_guardians()
+        self.quorum = param_g.get_quorum()
+        self.base_hash = param_g.get_base_hash()
 
     def verify_all_guardians(self) -> bool:
         """
@@ -73,8 +74,7 @@ class KeyGenerationVerifier:
         """
         if index >= self.num_of_guardians or index < 0:
             raise IndexError("index out of bound")
-        generator = generator.FilePathGenerator(self.num_of_guardians, self.quorum)
-        coeff_file_path = generator.get_guardian_coefficient_file_path(index)
+        coeff_file_path = self.path_g.get_guardian_coefficient_file_path(index)
         return json_parser.read_json_file(coeff_file_path)
 
     def __compute_guardian_challenge_threshold_separated(self, public_key: int, commitment: int) -> int:
@@ -85,8 +85,8 @@ class KeyGenerationVerifier:
         :param commitment: commitment, under each guardian, previously listed as h
         :return: a challenge value of a guardian, separated by threshold
         """
-        return number.mod(hash.hash_elems(self.base_hash, public_key, commitment),
-                          constants.LARGE_PRIME)
+        return number.mod(number.hash_elems(self.base_hash, public_key, commitment),
+                          self.large_prime)
 
     def __verify_equation(self, response: str, commitment: str, public_key: str, challenge: str) -> bool:
         """
@@ -102,17 +102,7 @@ class KeyGenerationVerifier:
         public_key = int(public_key)
         challenge = int(challenge)
 
-        left = pow(self.generator, response, constants.LARGE_PRIME)
-        right = number.mod(commitment * pow(public_key, challenge, constants.LARGE_PRIME), constants.LARGE_PRIME)
+        left = pow(self.generator, response, self.large_prime)
+        right = number.mod(commitment * pow(public_key, challenge, self.large_prime), self.large_prime)
 
         return number.equals(left, right)
-
-
-#TODO: unittest
-if __name__ == '__main__':
-    context_path = '/Users/rainbowhuang/Desktop/ElectionGuard/data_08132020/context.json'
-    constants_path = '/Users/rainbowhuang/Desktop/ElectionGuard/data_08132020/constants.json'
-    context_file = json_parser.read_json_file(context_path)
-    constants_file = json_parser.read_json_file(constants_path)
-    kv = KeyGenerationVerifier(constants_file, context_file)
-    kv.verify_all_guardians()

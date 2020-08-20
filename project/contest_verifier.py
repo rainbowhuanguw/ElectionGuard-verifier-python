@@ -1,34 +1,26 @@
-from project import number, hash, constants
+from project import number
 from project.selection_verifier import BallotSelectionVerifier, TallySelectionVerifier
+from project.generator import ParameterGenerator, VoteLimitCounter
+from project.interfaces import IVerifier, IContestVerifier
 
 
-class IContestVerifier:
-    """
-    Contest verifier as an interface
-    """
-
-    def verify_a_contest(self):
-        pass
-
-
-class BallotContestVerifier(IContestVerifier):
+class BallotContestVerifier(IVerifier, IContestVerifier):
     """
     This class is responsible for checking individual ballot encryption and selection limit
     """
-    def __init__(self, contest_dic: dict, generator: int, extended_hash: int, public_key: int, vote_limit_dic: dict):
 
-        self.__generator = generator
-        self.__extended_hash = extended_hash
-        self.__public_key = public_key
-        self.__vote_limit_dic = vote_limit_dic
+    def __init__(self, contest_dic: dict, param_g: ParameterGenerator, limit_counter: VoteLimitCounter):
+        super().__init__(param_g)
+        self.limit_counter = limit_counter
+        self.vote_limit_dic = limit_counter.get_contest_vote_limits()
 
         # contest info
-        self.__contest_dic = contest_dic
-        self.__contest_alpha = int(contest_dic.get('proof', {}).get('pad'))
-        self.__contest_beta = int(contest_dic.get('proof', {}).get('data'))
-        self.__contest_response = int(contest_dic.get('proof', {}).get('response'))
-        self.__contest_challenge = int(contest_dic.get('proof', {}).get('challenge'))
-        self.__contest_id = contest_dic.get('object_id')
+        self.contest_dic = contest_dic
+        self.contest_alpha = int(contest_dic.get('proof', {}).get('pad'))
+        self.contest_beta = int(contest_dic.get('proof', {}).get('data'))
+        self.contest_response = int(contest_dic.get('proof', {}).get('response'))
+        self.contest_challenge = int(contest_dic.get('proof', {}).get('challenge'))
+        self.contest_id = contest_dic.get('object_id')
 
     def verify_a_contest(self) -> bool:
         """
@@ -38,8 +30,8 @@ class BallotContestVerifier(IContestVerifier):
         # initialize errors to false
         encryption_error, limit_error = False, False
         # get variables
-        selections_list = self.__contest_dic.get('ballot_selections')
-        vote_limit = int(self.__vote_limit_dic.get(self.__contest_id))
+        selections_list = self.contest_dic.get('ballot_selections')
+        vote_limit = int(self.vote_limit_dic.get(self.contest_id))
 
         placeholder_count = 0
         selection_alpha_product = 1
@@ -48,11 +40,11 @@ class BallotContestVerifier(IContestVerifier):
         for selection in selections_list:
             # verify encryption correctness on every selection  - selection check
             # create selection verifiers
-            sv = BallotSelectionVerifier(selection, self.__generator, self.__public_key, self.__extended_hash)
+            sv = BallotSelectionVerifier(selection, self.param_g)
 
             # get alpha, beta products
-            selection_alpha_product = selection_alpha_product * sv.get_pad() % constants.LARGE_PRIME
-            selection_beta_product = selection_beta_product * sv.get_data() % constants.LARGE_PRIME
+            selection_alpha_product = selection_alpha_product * sv.get_pad() % self.param_g.get_large_prime()
+            selection_beta_product = selection_beta_product * sv.get_data() % self.param_g.get_large_prime()
 
             # check validity of a selection
             is_correct = sv.verify_selection_validity()
@@ -69,12 +61,12 @@ class BallotContestVerifier(IContestVerifier):
                 placeholder_count = self.__increment_count(placeholder_count)
 
         # verify the placeholder numbers match the maximum votes allowed - contest check
-        placeholder_match = self.__match_vote_limit_by_contest(self.__contest_id, placeholder_count)
+        placeholder_match = self.__match_vote_limit_by_contest(self.contest_id, placeholder_count)
         if not placeholder_match:
             limit_error = True
 
-        challenge_computed = hash.hash_elems(self.__extended_hash, selection_alpha_product, selection_beta_product,
-                                              self.__contest_alpha, self.__contest_beta)
+        challenge_computed = number.hash_elems(self.extended_hash, selection_alpha_product, selection_beta_product,
+                                               self.contest_alpha, self.contest_beta)
 
         # check if given contest challenge matches the computation
         challenge_match = self.__check_challenge(challenge_computed)
@@ -89,7 +81,7 @@ class BallotContestVerifier(IContestVerifier):
             limit_error = True
 
         if encryption_error or limit_error:
-            output = self.__contest_id + ' verification failure:'
+            output = self.contest_id + ' verification failure:'
             if encryption_error:
                 output += ' encryption error. '
             if limit_error:
@@ -102,19 +94,17 @@ class BallotContestVerifier(IContestVerifier):
         """
         :return:
         """
-        res = number.is_within_set_zq(self.__contest_response)
+        res = number.is_within_set_zq(self.contest_response)
         if not res:
             print("Contest response error. ")
         return res
 
     def __check_challenge(self, challenge_computed) -> bool:
         """
-
-        :param alpha_product:
-        :param beta_product:
+        :param challenge_computed
         :return:
         """
-        res = number.equals(challenge_computed, self.__contest_challenge)
+        res = number.equals(challenge_computed, self.contest_challenge)
 
         if not res:
             print("Contest challenge error. ")
@@ -126,10 +116,10 @@ class BallotContestVerifier(IContestVerifier):
         check g ^ v = a * A ^ c mod p
         :return:
         """
-        left = pow(self.__generator, self.__contest_response, constants.LARGE_PRIME)
-        right = number.mod(number.mod(self.__contest_alpha, constants.LARGE_PRIME)
-                           * pow(alpha_product, self.__contest_challenge, constants.LARGE_PRIME),
-                           constants.LARGE_PRIME)
+        left = pow(self.generator, self.contest_response, self.large_prime)
+        right = number.mod(number.mod(self.contest_alpha, self.large_prime)
+                           * pow(alpha_product, self.contest_challenge, self.large_prime),
+                           self.large_prime)
 
         res = number.equals(left, right)
         if not res:
@@ -143,12 +133,12 @@ class BallotContestVerifier(IContestVerifier):
         :param beta_product:
         :return:
         """
-        left = number.mod(pow(self.__generator, votes_allowed, constants.LARGE_PRIME) * \
-                          pow(self.__public_key, self.__contest_response, constants.LARGE_PRIME),
-                          constants.LARGE_PRIME)
+        left = number.mod(pow(self.generator, votes_allowed, self.large_prime) *
+                          pow(self.public_key, self.contest_response, self.large_prime),
+                          self.large_prime)
 
-        right = number.mod(self.__contest_beta * pow(beta_product, self.__contest_challenge, constants.LARGE_PRIME),
-                           constants.LARGE_PRIME)
+        right = number.mod(self.contest_beta * pow(beta_product, self.contest_challenge, self.large_prime),
+                           self.large_prime)
 
         res = number.equals(left, right)
         if not res:
@@ -163,7 +153,7 @@ class BallotContestVerifier(IContestVerifier):
         :param num_of_placeholders
         :return:
         """
-        vote_limit = int(self.__vote_limit_dic.get(contest_name))
+        vote_limit = int(self.vote_limit_dic.get(contest_name))
 
         res = number.equals(vote_limit, num_of_placeholders)
         if not res:
@@ -182,13 +172,12 @@ class BallotContestVerifier(IContestVerifier):
 
 
 # TODO:
-class TallyContestVerifier(IContestVerifier):
+class TallyContestVerifier(IVerifier, IContestVerifier):
 
-    def __init__(self, contest_dic: dict, generator: int, extended_hash: int, public_keys: list):
+    def __init__(self, contest_dic: dict, param_g: ParameterGenerator):
+        super().__init__(param_g)
         self.__contest_dic = contest_dic
-        self.__generator = generator
-        self.__extended_hash = extended_hash
-        self.__public_keys = public_keys
+        self.__public_keys = param_g.get_public_keys_of_all_guardians()
         self.__selections = self.__contest_dic.get('selections')
         self.__selection_names = list(self.__selections.keys())
         self.__contest_id = self.__contest_dic.get('object_id')
@@ -201,7 +190,7 @@ class TallyContestVerifier(IContestVerifier):
         error = False
         for selection_name in self.__selection_names:
             selection = self.__selections.get(selection_name)
-            tsv = TallySelectionVerifier(selection, self.__generator, self.__extended_hash, self.__public_keys)
+            tsv = TallySelectionVerifier(selection, self.param_g)
             if not tsv.verify_a_selection():
                 error = True
 

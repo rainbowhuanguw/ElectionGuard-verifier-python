@@ -28,7 +28,6 @@ class TallyDecryptionVerifier(IDecryptionVerifier):
         contest_names = list(self.__contests.keys())
         return self.__make_all_contest_verification(self.__contests, contest_names, tally_name)
 
-
     def verify_a_spoiled_ballot(self, ballot_name: str) -> bool:
         """
 

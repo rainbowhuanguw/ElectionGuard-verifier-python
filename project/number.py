@@ -1,5 +1,27 @@
 import random
-from project import constants
+import hashlib
+from typing import (
+    Union,
+    Sequence
+)
+
+LARGE_PRIME = (int(('''104438888141315250669175271071662438257996424904738378038423348328
+3953907971553643537729993126875883902173634017777416360502926082946377942955704498
+5420976148418252467735806893983863204397479111608977315510749039672438834271329188
+1374801626975452234350528589881677721176191239277291448552115552164104927344620757
+8961939840619466145806859275053476560973295158703823395710210329314709715239251736
+5523840808458360487786673189314183384224438910259118847234330847012077719019445932
+8662497991739135056466263272370300796422984915475619689061525228653308964318490270
+6926081744149289517418249153634178342075381874131646013444796894582106870531535803
+6662545796026324531037414525697939055519015418561732513850474148403927535855819099
+5015804625681054267836812127850996052095762473794291460031064660979266501285839738
+1435755902851312071248102599442308951327039250818892493767423329663783709190716162
+0235296692173009397831714158082331468230007669177892861540060422814237337064629052
+4377485454312723950024587358201266366643058386277816736954760301634424272959224454
+4608279405999759391099775667746401633668308698186721172238255007962658564443858927
+6348504157753488390520266757856948263869301753031434500465754608438799417919463132
+99322976993405829119''').replace('\n', '')))
+SMALL_PRIME = pow(2, 256) - 189
 
 
 def is_prime(num: int, k: int) -> bool:
@@ -111,7 +133,7 @@ def is_within_set_zq(num) -> bool:
     num = int(num)
 
     # exclusive bounds, set lower bound to -1
-    return is_within_range(num, 0 - 1, constants.SMALL_PRIME)
+    return is_within_range(num, 0 - 1, SMALL_PRIME)
 
 
 def is_within_set_zrp(num) -> bool:
@@ -122,8 +144,8 @@ def is_within_set_zrp(num) -> bool:
     """
     num = int(num)
 
-    return is_within_range(num, 0, constants.LARGE_PRIME) and equals(
-        pow(num, constants.SMALL_PRIME, constants.LARGE_PRIME), 1)
+    return is_within_range(num, 0, LARGE_PRIME) and equals(
+        pow(num, SMALL_PRIME, LARGE_PRIME), 1)
 
 
 def mod(dividend, divisor) -> int:
@@ -153,3 +175,39 @@ def multiply(*args, mod_num=1) -> int:
         product *= arg
 
     return product % mod_num
+
+# main hash function
+def hash_elems(*a):
+    h = hashlib.sha256()
+    h.update("|".encode("utf-8"))
+
+    for x in a:
+
+        if not x:
+            # This case captures empty lists and None, nicely guaranteeing that we don't
+            # need to do a recursive call if the list is empty. So we need a string to
+            # feed in for both of these cases. "None" would be a Python-specific thing,
+            # so we'll go with the more JSON-ish "null".
+            hash_me = "null"
+
+        elif isinstance(x, str):
+            # strings are iterable, so it's important to handle them before the following check
+            hash_me = x
+        elif isinstance(x, Sequence):
+            # The simplest way to deal with lists, tuples, and such are to crunch them recursively.
+            hash_me = str(hash_elems(*x))
+        else:
+            hash_me = str(x)
+        h.update((hash_me + "|").encode("utf-8"))
+
+    # Note: the returned value will range from [1,Q), because zeros are bad
+    # for some of the nonces. (g^0 == 1, which would be an unhelpful thing
+    # to multiply something with, if you were trying to encrypt it.)
+
+    # Also, we don't need the checked version of int_to_q, because the
+    # modulo operation here guarantees that we're in bounds.
+    # return int_to_q_unchecked(
+    #     1 + (int.from_bytes(h.digest(), byteorder="big") % Q_MINUS_ONE)
+    # )
+
+    return int.from_bytes(h.digest(), byteorder="big") % (SMALL_PRIME - 1)
