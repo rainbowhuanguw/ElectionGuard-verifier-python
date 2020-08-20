@@ -4,7 +4,7 @@ from project.generator import ParameterGenerator, VoteLimitCounter
 from project.interfaces import IVerifier, IContestVerifier
 
 
-class BallotContestVerifier(IVerifier, IContestVerifier):
+class BallotContestVerifier(IContestVerifier):
     """
     This class is responsible for checking individual ballot encryption and selection limit
     """
@@ -177,7 +177,7 @@ class BallotContestVerifier(IVerifier, IContestVerifier):
         return count + 1
 
 
-class TallyContestVerifier(IVerifier, IContestVerifier):
+class TallyContestVerifier(IContestVerifier):
 
     def __init__(self, contest_dic: dict, param_g: ParameterGenerator):
         super().__init__(param_g)

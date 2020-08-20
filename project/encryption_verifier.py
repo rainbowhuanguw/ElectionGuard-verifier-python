@@ -1,16 +1,15 @@
 from project import json_parser
 from .contest_verifier import BallotContestVerifier
 from .generator import ParameterGenerator, FilePathGenerator, VoteLimitCounter
-from .interfaces import IVerifier
+from .interfaces import IBallotVerifier
 import glob
 
 
-class AllBallotsVerifier(IVerifier):
+class AllBallotsVerifier(IBallotVerifier):
     def __init__(self, param_g: ParameterGenerator, path_g: FilePathGenerator, limit_counter: VoteLimitCounter):
-        super().__init__(param_g)
+        super().__init__(param_g, limit_counter)
         self.path_g = path_g
         self.folder_path = path_g.get_encrypted_ballot_folder_path()
-        self.limit_counter = limit_counter
 
     def verify_all_ballots(self) -> bool:
         error = self.initiate_error()
@@ -31,7 +30,7 @@ class AllBallotsVerifier(IVerifier):
         return not error
 
 
-class BallotEncryptionVerifier(IVerifier):
+class BallotEncryptionVerifier(IBallotVerifier):
     """
     This class checks ballot correctness on each ballot. Ballot correctness can be represented by:
     1. correct encryption (of value 0 or 1) of each selection within each contest (box 3)
@@ -40,9 +39,8 @@ class BallotEncryptionVerifier(IVerifier):
 
     def __init__(self, ballot_dic: dict, param_g: ParameterGenerator, limit_counter: VoteLimitCounter):
         """"""
-        super().__init__(param_g)
+        super().__init__(param_g, limit_counter)
         self.ballot_dic = ballot_dic
-        self.__limit_counter = limit_counter
 
     def verify_all_contests(self) -> bool:
         """
@@ -55,7 +53,7 @@ class BallotEncryptionVerifier(IVerifier):
         contests = self.ballot_dic.get('contests')
 
         for contest in contests:
-            cv = BallotContestVerifier(contest, self.param_g, self.__limit_counter)
+            cv = BallotContestVerifier(contest, self.param_g, self.limit_counter)
             res = cv.verify_a_contest()
             if not res:
                 error = self.set_error()

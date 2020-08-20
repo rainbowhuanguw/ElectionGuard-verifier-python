@@ -1,4 +1,4 @@
-from .generator import ParameterGenerator
+from .generator import ParameterGenerator, VoteLimitCounter
 
 
 class IVerifier:
@@ -18,13 +18,18 @@ class IVerifier:
     def initiate_error() -> bool:
         return False
 
+class IBallotVerifier(IVerifier):
+    def __init__(self, param_g: ParameterGenerator, limit_counter: VoteLimitCounter ):
+        super().__init__(param_g)
+        self.limit_counter = limit_counter
+
 
 class IContestVerifier(IVerifier):
     """
     Contest verifier as an interface
     """
 
-    def verify_a_contest(self):
+    def verify_a_contest(self) -> bool:
         pass
 
 

@@ -86,6 +86,6 @@ class BaselineVerifier(IVerifier):
             output += " failure. "
         else:
             output += " success. "
-
         print(output)
+
         return not error

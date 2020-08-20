@@ -204,7 +204,7 @@ class BallotSelectionVerifier(ISelectionVerifier):
         return res
 
     # --------------------------------------- limit check ----------------------------------------------------
-    def verify_selection_limit(self):
+    def verify_selection_limit(self) -> bool:
         """
 
         :return:
@@ -229,7 +229,7 @@ class BallotSelectionVerifier(ISelectionVerifier):
         return a_res and b_res
 
 
-class TallySelectionVerifier(IVerifier, ISelectionVerifier):
+class TallySelectionVerifier(ISelectionVerifier):
     def __init__(self, selection_dic: dict, param_g: ParameterGenerator):
         super().__init__(param_g)
         self.selection_dic = selection_dic
