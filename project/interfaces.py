@@ -18,3 +18,11 @@ class IContestVerifier:
 
     def verify_a_contest(self):
         pass
+
+
+class ISelectionVerifier:
+    def get_pad(self) -> int:
+        pass
+
+    def get_data(self) -> int:
+        pass

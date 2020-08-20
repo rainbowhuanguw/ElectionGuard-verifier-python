@@ -74,6 +74,7 @@ class BallotContestVerifier(IVerifier, IContestVerifier):
             limit_error = True
 
         # check equations
+        # TODO: error in equation 2
         equ1_check = self.__check_equation1(selection_alpha_product)
         equ2_check = self.__check_equation2(selection_beta_product, vote_limit)
 
@@ -133,9 +134,14 @@ class BallotContestVerifier(IVerifier, IContestVerifier):
         :param beta_product:
         :return:
         """
-        left = number.mod(pow(self.generator, votes_allowed, self.large_prime) *
+        # TODO: confirm what L is, use contest constant * challenge or vote limit
+        contest_constant = self.contest_dic.get('proof', {}).get('constant')
+        left = number.mod(pow(self.generator, contest_constant * self.contest_challenge, self.large_prime) *
                           pow(self.public_key, self.contest_response, self.large_prime),
                           self.large_prime)
+        #left = number.mod(pow(self.generator, votes_allowed, self.large_prime) *
+        #                  pow(self.public_key, self.contest_response, self.large_prime),
+        #                  self.large_prime)
 
         right = number.mod(self.contest_beta * pow(beta_product, self.contest_challenge, self.large_prime),
                            self.large_prime)
@@ -171,16 +177,15 @@ class BallotContestVerifier(IVerifier, IContestVerifier):
         return count + 1
 
 
-# TODO:
 class TallyContestVerifier(IVerifier, IContestVerifier):
 
     def __init__(self, contest_dic: dict, param_g: ParameterGenerator):
         super().__init__(param_g)
-        self.__contest_dic = contest_dic
-        self.__public_keys = param_g.get_public_keys_of_all_guardians()
-        self.__selections = self.__contest_dic.get('selections')
-        self.__selection_names = list(self.__selections.keys())
-        self.__contest_id = self.__contest_dic.get('object_id')
+        self.contest_dic = contest_dic
+        self.public_keys = param_g.get_public_keys_of_all_guardians()
+        self.selections = self.contest_dic.get('selections')
+        self.selection_names = list(self.selections.keys())
+        self.contest_id = self.contest_dic.get('object_id')
 
     def verify_a_contest(self) -> bool:
         """
@@ -188,13 +193,13 @@ class TallyContestVerifier(IVerifier, IContestVerifier):
         :return:
         """
         error = False
-        for selection_name in self.__selection_names:
-            selection = self.__selections.get(selection_name)
+        for selection_name in self.selection_names:
+            selection = self.selections.get(selection_name)
             tsv = TallySelectionVerifier(selection, self.param_g)
             if not tsv.verify_a_selection():
                 error = True
 
         if error:
-            print(self.__contest_id + ' tally decryption failure. ')
+            print(self.contest_id + ' tally decryption failure. ')
 
         return not error

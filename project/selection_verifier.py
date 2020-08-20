@@ -1,14 +1,7 @@
 from project import number
 from project.share_verifier import ShareVerifier
 from project.generator import ParameterGenerator
-from project.interfaces import IVerifier
-
-class ISelectionVerifier:
-    def get_pad(self) -> int:
-        pass
-
-    def get_data(self) -> int:
-        pass
+from project.interfaces import IVerifier, ISelectionVerifier
 
 
 class BallotSelectionVerifier(IVerifier, ISelectionVerifier):
@@ -82,7 +75,7 @@ class BallotSelectionVerifier(IVerifier, ISelectionVerifier):
             error = True
 
         # point 2: conduct hash computation, c = H(Q-bar, (alpha, beta), (a0, b0), (a1, b1))
-        challenge = number.hash_elems(self.generator, self.pad, self.data,
+        challenge = number.hash_elems(self.extended_hash, self.pad, self.data,
                                       zero_pad, zero_data, one_pad, one_data)
 
         # point 4:  c = c0 + c1 mod q is satisfied
@@ -239,31 +232,31 @@ class BallotSelectionVerifier(IVerifier, ISelectionVerifier):
 class TallySelectionVerifier(IVerifier, ISelectionVerifier):
     def __init__(self, selection_dic: dict, param_g: ParameterGenerator):
         super().__init__(param_g)
-        self.__selection_dic = selection_dic
-        self.__selection_id = selection_dic.get('object_id')
-        self.__pad = int(self.__selection_dic.get('message', {}).get('pad'))
-        self.__data = int(self.__selection_dic.get('message', {}).get('data'))
-        self.__public_keys = param_g.get_public_keys_of_all_guardians()
+        self.selection_dic = selection_dic
+        self.selection_id = selection_dic.get('object_id')
+        self.pad = int(self.selection_dic.get('message', {}).get('pad'))
+        self.data = int(self.selection_dic.get('message', {}).get('data'))
+        self.public_keys = param_g.get_public_keys_of_all_guardians()
 
     def get_pad(self) -> int:
         """
         get a selection's alpha and beta
         :return:
         """
-        return self.__pad
+        return self.pad
 
     def get_data(self) -> int:
-        return self.__data
+        return self.data
 
     def verify_a_selection(self) -> bool:
         """
 
         :return:
         """
-        shares = self.__selection_dic.get('shares')
-        sv = ShareVerifier(shares, self.param_g, self.__pad, self.__data)
+        shares = self.selection_dic.get('shares')
+        sv = ShareVerifier(shares, self.param_g, self.pad, self.data)
         res = sv.verify_all_shares()
         if not res:
-            print(self.__selection_id + " tally verification error. ")
+            print(self.selection_id + " tally verification error. ")
 
         return res

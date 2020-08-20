@@ -3,7 +3,7 @@ from project.json_parser import read_json_file
 
 class FilePathGenerator:
 
-    def __init__(self, root_folder_path='/Users/rainbowhuang/Desktop/ElectionGuard/data_08132020',
+    def __init__(self, root_folder_path='/Users/rainbowhuang/Desktop/ElectionGuard/data_08132020/',
                  num_of_guardians=5, threshold=3):
         """
         generate a file name generator with parameters from the json files
@@ -13,6 +13,7 @@ class FilePathGenerator:
         #TODO: change to relative paths when push to git
         self.DATA_FOLDER_PATH = root_folder_path
         self.FILE_TYPE_SUFFIX = '.json'
+        self.FOLDER_SUFFIX = '/'
 
         # class variables
         self.num_of_guardians = num_of_guardians
@@ -34,28 +35,28 @@ class FilePathGenerator:
 
         :return:
         """
-        return self.DATA_FOLDER_PATH + '/context' + self.FILE_TYPE_SUFFIX
+        return self.DATA_FOLDER_PATH + 'context' + self.FILE_TYPE_SUFFIX
 
     def get_constants_file_path(self) -> str:
         """
 
         :return:
         """
-        return self.DATA_FOLDER_PATH + '/constants' + self.FILE_TYPE_SUFFIX
+        return self.DATA_FOLDER_PATH + 'constants' + self.FILE_TYPE_SUFFIX
 
     def get_tally_file_path(self) -> str:
         """
 
         :return:
         """
-        return self.DATA_FOLDER_PATH + '/tally' + self.FILE_TYPE_SUFFIX
+        return self.DATA_FOLDER_PATH + 'tally' + self.FILE_TYPE_SUFFIX
 
     def get_description_file_path(self) -> str:
         """
 
         :return:
         """
-        return self.DATA_FOLDER_PATH + '/description' + self.FILE_TYPE_SUFFIX
+        return self.DATA_FOLDER_PATH + 'description' + self.FILE_TYPE_SUFFIX
 
     def get_encrypted_ballot_folder_path(self) -> str:
         """
@@ -63,28 +64,32 @@ class FilePathGenerator:
         :return:
         """
 
-        return self.DATA_FOLDER_PATH + '/encrypted_ballots'
+        return self.DATA_FOLDER_PATH + 'encrypted_ballots' + self.FOLDER_SUFFIX
 
     def get_spoiled_ballot_folder_path(self) -> str:
         """
 
         :return:
         """
-        return self.DATA_FOLDER_PATH + '/spoiled_ballots'
+        return self.DATA_FOLDER_PATH + '/spoiled_ballots' + self.FILE_TYPE_SUFFIX
 
 
 class ParameterGenerator:
-    def __init__(self, num_of_guardians=5, threshold=3):
-        self.__filename_generator = FilePathGenerator()
+    def __init__(self, path_g: FilePathGenerator, num_of_guardians=5, quorum=3):
+        """
+
+        :type path_g: object
+        """
+        self.path_g = path_g
         self.num_of_guardians = num_of_guardians
-        self.threshold = threshold
+        self.quorum = quorum
 
     def get_context(self) -> dict:
         """
         get all context as a dictionary
         :return:
         """
-        context_path = self.__filename_generator.get_context_file_path()
+        context_path = self.path_g.get_context_file_path()
         return read_json_file(context_path)
 
     def get_constants(self) -> dict:
@@ -92,7 +97,7 @@ class ParameterGenerator:
         get all constants as a dictionary
         :return:
         """
-        constants_path = self.__filename_generator.get_constants_file_path()
+        constants_path = self.path_g.get_constants_file_path()
         return read_json_file(constants_path)
 
     def get_generator(self) -> int:
@@ -150,7 +155,7 @@ class ParameterGenerator:
         :param index:
         :return:
         """
-        file_path = self.__filename_generator.get_guardian_coefficient_file_path(index)
+        file_path = self.path_g.get_guardian_coefficient_file_path(index)
         coefficients = read_json_file(file_path)
         return int(coefficients.get('coefficient_commitments')[0])
 
@@ -167,7 +172,7 @@ class ParameterGenerator:
 
         :return:
         """
-        file_path = self.__filename_generator.get_description_file_path()
+        file_path = self.path_g.get_description_file_path()
         return read_json_file(file_path)
 
     def get_num_of_guardians(self) -> int:
@@ -182,14 +187,15 @@ class ParameterGenerator:
 
         :return:
         """
-        return int(self.threshold)
+        return int(self.quorum)
+
 
 class VoteLimitCounter:
     def __init__(self, param_g: ParameterGenerator):
         self.description_dic = param_g.get_description()
         self.contest_vote_limits = {}
 
-    def get_contest_vote_limits(self):
+    def get_contest_vote_limits(self) -> dict:
         """
         :return:
         """

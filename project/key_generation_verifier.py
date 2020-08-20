@@ -59,11 +59,11 @@ class KeyGenerationVerifier(IVerifier):
             # check if the computed challenge value matches the given
             if not number.equals(challenge, challenge_computed):
                 error = True
-                print("guardian {i}, threshold {j}, challenge number error. ".format(i=index, j=i))
+                print("guardian {i}, quorum {j}, challenge number error. ".format(i=index, j=i))
             # check equation
             if not self.__verify_equation(response, commitment, public_key, challenge):
                 error = True
-                print("guardian {i}, threshold {j}, equation error. ".format(i=index, j=i))
+                print("guardian {i}, quorum {j}, equation error. ".format(i=index, j=i))
 
         return not error
 
@@ -81,10 +81,10 @@ class KeyGenerationVerifier(IVerifier):
     def __compute_guardian_challenge_threshold_separated(self, public_key: int, commitment: int) -> int:
         """
         computes challenge (c_ij) with hash, H(cij = H(base hash, public key, commitment) % q, each guardian has
-        threshold number of these challenges
+        quorum number of these challenges
         :param public_key: public key, under each guardian, previously listed as k
         :param commitment: commitment, under each guardian, previously listed as h
-        :return: a challenge value of a guardian, separated by threshold
+        :return: a challenge value of a guardian, separated by quorum
         """
         return number.mod(number.hash_elems(self.base_hash, public_key, commitment),
                           self.large_prime)

@@ -1,26 +1,34 @@
 from project import json_parser
 from .contest_verifier import BallotContestVerifier
-from .generator import ParameterGenerator, VoteLimitCounter
+from .generator import ParameterGenerator, FilePathGenerator, VoteLimitCounter
 from .interfaces import IVerifier
 import glob
 
 
 class AllBallotsVerifier(IVerifier):
-    def __init__(self, folder_path: str, param_g: ParameterGenerator, limit_counter: VoteLimitCounter):
+    def __init__(self, param_g: ParameterGenerator, path_g: FilePathGenerator, limit_counter: VoteLimitCounter):
         super().__init__(param_g)
-        self.folder_path = folder_path
-        self.__limit_counter = limit_counter
+        self.path_g = path_g
+        self.folder_path = path_g.get_encrypted_ballot_folder_path()
+        self.limit_counter = limit_counter
 
     def verify_all_ballots(self) -> bool:
         error = False
         count = 0
         for ballot_file in glob.glob(self.folder_path + '*.json'):
             ballot_dic = json_parser.read_json_file(ballot_file)
-            bvv = BallotEncryptionVerifier(ballot_dic, self.param_g, self.__limit_counter)
+            bvv = BallotEncryptionVerifier(ballot_dic, self.param_g, self.limit_counter)
             res = bvv.verify_all_contests()
             if not res:
                 error = True
                 count += 1
+
+        output = "All ballot verification "
+        if error:
+            output += "failure. "
+        else:
+            output += "success. "
+        print(output)
 
         return not error
 
@@ -60,4 +68,3 @@ class BallotEncryptionVerifier(IVerifier):
             print(ballot_id + ' ballot correctness verification failure.')
 
         return not error
-
