@@ -1,7 +1,6 @@
 import random
 import hashlib
 from typing import (
-    Union,
     Sequence
 )
 
@@ -148,16 +147,27 @@ def is_within_set_zrp(num) -> bool:
         pow(num, SMALL_PRIME, LARGE_PRIME), 1)
 
 
-def mod(dividend, divisor) -> int:
+def mod_p(dividend) -> int:
     """
     compute the modulus number by calculating dividend % divisor
     :param dividend: dividend, the number in front
     :param divisor: divisor, the number behind
     :return: dividend % divisor
     """
-    dividend, divisor = int(dividend), int(divisor)
+    dividend = int(dividend)
 
-    return dividend % divisor
+    return dividend % int(LARGE_PRIME)
+
+
+def mod_q(dividend) -> int:
+    """
+
+    :param dividend:
+    :return:
+    """
+    dividend = int(dividend)
+
+    return dividend % int(SMALL_PRIME)
 
 
 def multiply(*args, mod_num=1) -> int:
@@ -175,6 +185,7 @@ def multiply(*args, mod_num=1) -> int:
         product *= arg
 
     return product % mod_num
+
 
 # main hash function
 def hash_elems(*a):

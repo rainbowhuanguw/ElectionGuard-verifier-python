@@ -1,4 +1,4 @@
-from project import number, json_parser
+from project import number
 from project.generator import ParameterGenerator
 from project.interfaces import IVerifier
 
@@ -7,6 +7,7 @@ class BaselineVerifier(IVerifier):
     """
     This class tests that whether the given parameters p, q, r, g equal to expected values. (box 1)
     """
+
     def __init__(self, param_g: ParameterGenerator):
         super().__init__(param_g)
 

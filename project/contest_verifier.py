@@ -74,7 +74,6 @@ class BallotContestVerifier(IContestVerifier):
             limit_error = self.set_error()
 
         # check equations
-        # TODO: error in equation 2
         equ1_check = self.__check_equation1(selection_alpha_product)
         equ2_check = self.__check_equation2(selection_beta_product, vote_limit)
 
@@ -112,15 +111,15 @@ class BallotContestVerifier(IContestVerifier):
 
         return res
 
+    # TODO: semantic meaning
     def __check_equation1(self, alpha_product: int) -> bool:
         """
         check g ^ v = a * A ^ c mod p
         :return:
         """
         left = pow(self.generator, self.contest_response, self.large_prime)
-        right = number.mod(number.mod(self.contest_alpha, self.large_prime)
-                           * pow(alpha_product, self.contest_challenge, self.large_prime),
-                           self.large_prime)
+        right = number.mod_p(number.mod_p(self.contest_alpha) *
+                             pow(alpha_product, self.contest_challenge, self.large_prime))
 
         res = number.equals(left, right)
         if not res:
@@ -128,27 +127,21 @@ class BallotContestVerifier(IContestVerifier):
 
         return res
 
+    # TODO: semantic meaning
     def __check_equation2(self, beta_product: int, votes_allowed: int) -> bool:
         """
-        g ^ L * K ^ v = b * B ^ C mod p
+        g ^ (L * c) * K ^ v = b * B ^ C mod p
         :param beta_product:
         :return:
         """
-        # TODO: confirm what L is, use contest constant * challenge or vote limit
-        contest_constant = self.contest_dic.get('proof', {}).get('constant')
-        left = number.mod(pow(self.generator, contest_constant * self.contest_challenge, self.large_prime) *
-                          pow(self.public_key, self.contest_response, self.large_prime),
-                          self.large_prime)
-        #left = number.mod(pow(self.generator, votes_allowed, self.large_prime) *
-        #                  pow(self.public_key, self.contest_response, self.large_prime),
-        #                  self.large_prime)
+        left = number.mod_p(pow(self.generator, number.mod_q(votes_allowed * self.contest_challenge), self.large_prime)
+                            * pow(self.public_key, self.contest_response, self.large_prime))
 
-        right = number.mod(self.contest_beta * pow(beta_product, self.contest_challenge, self.large_prime),
-                           self.large_prime)
+        right = number.mod_p(self.contest_beta * pow(beta_product, self.contest_challenge, self.large_prime))
 
         res = number.equals(left, right)
         if not res:
-            print("Contest selection limit check equation 2 error. ")
+            print("contest selection limit check equation 2 error. ")
 
         return res
 

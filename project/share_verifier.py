@@ -109,7 +109,7 @@ class ShareVerifier(IVerifier):
         :return:
         """
         left = pow(self.generator, response, self.large_prime)
-        right = number.mod(pad * pow(public_key, challenge, self.large_prime), self.large_prime)
+        right = number.mod_p(pad * pow(public_key, challenge, self.large_prime))
 
         res = number.equals(left, right)
 
@@ -128,7 +128,7 @@ class ShareVerifier(IVerifier):
         :return:
         """
         left = pow(self.selection_pad, response, self.large_prime)
-        right = number.mod(data * pow(partial_decrypt, challenge, self.large_prime), self.large_prime)
+        right = number.mod_p(data * pow(partial_decrypt, challenge, self.large_prime))
 
         res = number.equals(left, right)
         if not res:

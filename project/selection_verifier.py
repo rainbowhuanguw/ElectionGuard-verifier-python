@@ -1,7 +1,7 @@
 from project import number
-from project.share_verifier import ShareVerifier
 from project.generator import ParameterGenerator
-from project.interfaces import IVerifier, ISelectionVerifier
+from project.interfaces import ISelectionVerifier
+from project.share_verifier import ShareVerifier
 
 
 class BallotSelectionVerifier(ISelectionVerifier):
@@ -22,7 +22,7 @@ class BallotSelectionVerifier(ISelectionVerifier):
 
     def get_pad(self) -> int:
         """
-        get a selection's alpha and beta
+        get a selection's alpha
         :return:
         """
         return self.pad
@@ -82,11 +82,11 @@ class BallotSelectionVerifier(ISelectionVerifier):
         if not self.__check_hash_comp(challenge, zero_challenge, one_challenge):
             error = self.set_error()
 
-        # point 5: check equations
-        if not (self.__check_equation1(self.pad, zero_pad, zero_challenge, zero_response) and
-                self.__check_equation1(self.pad, one_pad, one_challenge, one_response) and
-                self.__check_equation2(self.data, zero_data, zero_challenge, zero_response) and
-                self.__check_equation3(self.data, one_data, one_challenge, one_response)):
+        # point 5: check chaum-pedersen proofs
+        if not (self.__check_cp_proof_zero_proof(self.pad, self.data, zero_pad, zero_data,
+                                                 zero_challenge, zero_response)
+                and self.__check_cp_proof_one_proof(self.pad, self.data, one_pad, one_data,
+                                                    one_challenge, one_response)):
             error = self.set_error()
 
         if error:
@@ -130,62 +130,57 @@ class BallotSelectionVerifier(ISelectionVerifier):
 
         return not error
 
-    def __check_equation1(self, pad: int, x_pad: int, x_chal: int, x_res: int) -> bool:
+    def __check_cp_proof_zero_proof(self, pad, data, zero_pad, zero_data, zero_chal, zero_res) -> bool:
         """
 
-        :param x_pad:
-        :param x_chal:
-        :param x_res:
-        :return:
-        """
-        equ1_left = pow(self.generator, x_res, self.large_prime)
-        equ1_right = number.mod(x_pad * pow(pad, x_chal, self.large_prime), self.large_prime)
-        res = number.equals(equ1_left, equ1_right)
-
-        if not res:
-            print("equation 1 error. ")
-
-        return res
-
-    def __check_equation2(self, data: int, zero_data: int, zero_chal: int, zero_res: int) -> bool:
-        """
-
+        :param pad:
         :param data:
+        :param zero_pad:
         :param zero_data:
         :param zero_chal:
         :param zero_res:
         :return:
         """
-        equ2_left = pow(self.public_key, zero_res, self.large_prime)
-        equ2_right = number.mod(zero_data * pow(data, zero_chal, self.large_prime), self.large_prime)
+        equ1_left = pow(self.generator, zero_res, self.large_prime)
+        equ1_right = number.mod_p(zero_pad * pow(pad, zero_chal, self.large_prime))
 
-        res = number.equals(equ2_left, equ2_right)
+        equ2_left = pow(self.public_key, zero_res, self.large_prime)
+        equ2_right = number.mod_p(zero_data * pow(data, zero_chal, self.large_prime))
+
+        res = number.equals(equ1_left, equ1_right) and number.equals(equ2_left, equ2_right)
 
         if not res:
-            print("equation 2 error. ")
+            print("Chaum-pedersen proof zero proof failure. ")
 
         return res
 
-    def __check_equation3(self, data: int, one_data: int, one_chal: int, one_res: int) -> bool:
+    def __check_cp_proof_one_proof(self, pad, data, one_pad, one_data, one_chal, one_res) -> bool:
         """
 
+        :param pad:
         :param data:
+        :param one_pad:
         :param one_data:
         :param one_chal:
         :param one_res:
         :return:
         """
-        equ3_left = number.mod(pow(self.generator, one_chal, self.large_prime) *
-                               pow(self.public_key, one_res, self.large_prime), self.large_prime)
-        equ3_right = number.mod(one_data * pow(data, one_chal, self.large_prime), self.large_prime)
+        equ1_left = pow(self.generator, one_res, self.large_prime)
+        equ1_right = number.mod_p(one_pad * pow(pad, one_chal, self.large_prime))
 
-        res = number.equals(equ3_left, equ3_right)
+        equ2_left = number.mod_p(pow(self.generator, one_chal, self.large_prime) *
+                                 pow(self.public_key, one_res, self.large_prime))
+        equ2_right = number.mod_p(one_data * pow(data, one_chal, self.large_prime))
+
+        res = number.equals(equ1_left, equ1_right) and number.equals(equ2_left, equ2_right)
+
         if not res:
-            print("equation 3 error. ")
+            print("Chaum-pedersen proof one proof failure. ")
 
         return res
 
-    def __check_hash_comp(self, chal, zero_chal, one_chal) -> bool:
+    @staticmethod
+    def __check_hash_comp(chal, zero_chal, one_chal) -> bool:
         """
         check if the equation c = c0 + c1 mod q is satisfied.
         :param chal:
@@ -194,9 +189,9 @@ class BallotSelectionVerifier(ISelectionVerifier):
         :return:
         """
         # calculated expected challenge value: c0 + c1 mod q
-        expected = number.mod(int(zero_chal) + int(one_chal), self.small_prime)
+        expected = number.mod_q(int(zero_chal) + int(one_chal))
 
-        res = number.equals(number.mod(chal, self.small_prime), expected)
+        res = number.equals(number.mod_q(chal), expected)
 
         if not res:
             print("challenge value error.")

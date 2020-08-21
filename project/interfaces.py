@@ -18,6 +18,7 @@ class IVerifier:
     def initiate_error() -> bool:
         return False
 
+
 class IBallotVerifier(IVerifier):
     def __init__(self, param_g: ParameterGenerator, limit_counter: VoteLimitCounter ):
         super().__init__(param_g)

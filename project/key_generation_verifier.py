@@ -41,6 +41,8 @@ class KeyGenerationVerifier(IVerifier):
         """
         coefficients_dic = self.__get_guardian_coeff_by_index(index)
 
+        error = self.initiate_error()
+
         # loop through every proof
         for i in range(self.quorum):
             error = self.initiate_error()
@@ -84,8 +86,7 @@ class KeyGenerationVerifier(IVerifier):
         :param commitment: commitment, under each guardian, previously listed as h
         :return: a challenge value of a guardian, separated by quorum
         """
-        return number.mod(number.hash_elems(self.base_hash, public_key, commitment),
-                          self.large_prime)
+        return number.mod_p(number.hash_elems(self.base_hash, public_key, commitment))
 
     def __verify_equation(self, response: str, commitment: str, public_key: str, challenge: str) -> bool:
         """
@@ -102,6 +103,6 @@ class KeyGenerationVerifier(IVerifier):
         challenge = int(challenge)
 
         left = pow(self.generator, response, self.large_prime)
-        right = number.mod(commitment * pow(public_key, challenge, self.large_prime), self.large_prime)
+        right = number.mod_p(commitment * pow(public_key, challenge, self.large_prime))
 
         return number.equals(left, right)
