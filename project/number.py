@@ -23,11 +23,12 @@ LARGE_PRIME = (int(('''104438888141315250669175271071662438257996424904738378038
 SMALL_PRIME = pow(2, 256) - 189
 
 
-def is_prime(num: int, k: int) -> bool:
+def is_prime(num: int, k=5) -> bool:
     """
     implements Miller-Rabin algorithm to test the primality of a number
     :param num: a positive integer
-    :param k: the number of iterations, impacting accuracy; the larger the number, the higher accuracy will be
+    :param k: the number of iterations, impacting accuracy; the larger the number, the higher accuracy will be.
+              set default as 5
     :return: True if it's a prime, False otherwise
     """
     # Corner cases

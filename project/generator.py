@@ -2,22 +2,25 @@ from project.json_parser import read_json_file
 
 
 class FilePathGenerator:
+    """
+    This class is responsible for navigating to different data files in the given dataset folder,
+    the root folder path can be changed to where the whole dataset is stored and its inner structure should
+    remain unchanged
+    """
 
     def __init__(self, root_folder_path='/Users/rainbowhuang/Desktop/ElectionGuard/data_08132020/',
-                 num_of_guardians=5, threshold=3):
+                 num_of_guardians=5):
         """
         generate a file name generator with parameters from the json files
-        :param num_of_guardians: number of guardians, set default to 5
-        :param threshold: quorum, the minimum number of members that must be present, set default to 3
+        :param num_of_guardians: number of guardians, set default to 5 #TODO: how to coordinate?
         """
-        #TODO: change to relative paths when push to git
+        # TODO: change to relative paths when push to git
         self.DATA_FOLDER_PATH = root_folder_path
         self.FILE_TYPE_SUFFIX = '.json'
         self.FOLDER_SUFFIX = '/'
 
         # class variables
         self.num_of_guardians = num_of_guardians
-        self.threshold = threshold
 
     def get_guardian_coefficient_file_path(self, index: int) -> str:
         """
@@ -25,69 +28,73 @@ class FilePathGenerator:
         :param index: index of a guardian, (0 - number of guardians)
         :return: a string of the coefficient
         """
-        coeff_file_path = '/coefficients/coefficient_validation_set_hamilton-county-' \
-                                                       'canvass-board-member-'
+        coeff_file_path = '/coefficients/coefficient_validation_' \
+                          'set_hamilton-county-canvass-board-member-'
 
         return self.DATA_FOLDER_PATH + coeff_file_path + str(index) + self.FILE_TYPE_SUFFIX
 
     def get_context_file_path(self) -> str:
         """
-
-        :return:
+        gets the file path to the context.json file
+        :return: a string representation of file path to the context.json file
         """
         return self.DATA_FOLDER_PATH + 'context' + self.FILE_TYPE_SUFFIX
 
     def get_constants_file_path(self) -> str:
         """
-
-        :return:
+        gets the file path to the constants.json file
+        :return: a string representation of file path to the constants.json file
         """
         return self.DATA_FOLDER_PATH + 'constants' + self.FILE_TYPE_SUFFIX
 
     def get_tally_file_path(self) -> str:
         """
-
-        :return:
+        gets the file path to the tally.json file
+        :return: a string representation of file path to the tally.json file
         """
         return self.DATA_FOLDER_PATH + 'tally' + self.FILE_TYPE_SUFFIX
 
     def get_description_file_path(self) -> str:
         """
-
-        :return:
+        gets the file path to the description.json file
+        :return: a string representation of file path to the description.json file
         """
         return self.DATA_FOLDER_PATH + 'description' + self.FILE_TYPE_SUFFIX
 
     def get_encrypted_ballot_folder_path(self) -> str:
         """
-
-        :return:
+        get a path to the encrypted_ballots folder
+        :return: a string representation of path to the encrypted_ballots folder
         """
 
         return self.DATA_FOLDER_PATH + 'encrypted_ballots' + self.FOLDER_SUFFIX
 
     def get_spoiled_ballot_folder_path(self) -> str:
         """
-
-        :return:
+        get a path to the spoiled_ballots folder
+        :return: a string representation of path to the spoiled_ballots folder
         """
         return self.DATA_FOLDER_PATH + '/spoiled_ballots' + self.FILE_TYPE_SUFFIX
 
 
 class ParameterGenerator:
-    def __init__(self, path_g: FilePathGenerator, num_of_guardians=5, quorum=3):
+    """
+    This class should be responsible for accessing parameters stored in dataset files
+    with the help of the file path file generator to locate the files. Parameters in this
+    case only include those that are higher than ballot-level. Those that are directly related
+    to each specific ballot, contest, or selection will be taken care of by each level of verifiers.
+    """
+    def __init__(self, path_g: FilePathGenerator):
         """
-
-        :type path_g: object
+        initializer
+        :param path_g: FilePathGenerator that helps to get the paths of files
         """
         self.path_g = path_g
-        self.num_of_guardians = num_of_guardians
-        self.quorum = quorum
 
     def get_context(self) -> dict:
         """
-        get all context as a dictionary
-        :return:
+        get all context information as a dictionary
+        :return: a dictionary of context info
         """
         context_path = self.path_g.get_context_file_path()
         return read_json_file(context_path)
@@ -95,7 +102,7 @@ class ParameterGenerator:
     def get_constants(self) -> dict:
         """
         get all constants as a dictionary
-        :return:
+        :return: a dictionary of constants info
         """
         constants_path = self.path_g.get_constants_file_path()
         return read_json_file(constants_path)
@@ -103,49 +110,49 @@ class ParameterGenerator:
     def get_generator(self) -> int:
         """
         get generator, set default name to be generator
-        :return:
+        :return: generator 'g' in integer
         """
         return int(self.get_constants().get('generator'))
 
     def get_large_prime(self) -> int:
         """
         get large prime p
-        :return:
+        :return: large prime 'p' in integer
         """
         return int(self.get_constants().get('large_prime'))
 
     def get_small_prime(self) -> int:
         """
-        get large prime p
-        :return:
+        get small prime q
+        :return: small prime 'q' in integer
         """
         return int(self.get_constants().get('small_prime'))
 
     def get_cofactor(self) -> int:
         """
-
-        :return:
+        get cofactor r
+        :return: cofactor 'r' in integer
         """
         return int(self.get_constants().get('cofactor'))
 
     def get_extended_hash(self) -> int:
         """
-
-        :return:
+        get extended base hash Q-bar
+        :return: extended base hash Q-bar in integer
         """
         return int(self.get_context().get('crypto_extended_base_hash'))
 
     def get_base_hash(self) -> int:
         """
-
-        :return:
+        get extended base hash Q
+        :return: base hash Q in integer
         """
         return int(self.get_context().get('crypto_base_hash'))
 
     def get_elgamal_key(self) -> int:
         """
-
-        :return:
+        get Elgamal key K
+        :return: Elgamal key K in integer
         """
         return int(self.get_context().get('elgamal_public_key'))
 
@@ -164,7 +171,8 @@ class ParameterGenerator:
 
         :return:
         """
-        for i in range(self.num_of_guardians):
+        num_of_guardians = self.get_num_of_guardians()
+        for i in range(num_of_guardians):
             yield self.get_public_key_of_a_guardian(i)
 
     def get_description(self) -> dict:
@@ -180,14 +188,18 @@ class ParameterGenerator:
 
         :return:
         """
-        return int(self.num_of_guardians)
+        context_file_path = self.path_g.get_context_file_path()
+        context = read_json_file(context_file_path)
+        return int(context.get('number_of_guardians'))
 
     def get_quorum(self) -> int:
         """
 
         :return:
         """
-        return int(self.quorum)
+        context_file_path = self.path_g.get_context_file_path()
+        context = read_json_file(context_file_path)
+        return int(context.get('quorum'))
 
 
 class VoteLimitCounter:
@@ -197,7 +209,9 @@ class VoteLimitCounter:
 
     def get_contest_vote_limits(self) -> dict:
         """
-        :return:
+        get the vote limits of a specific contest, used to confirm a ballot's correctness,
+        whether the vote exceeds the vote limits of any contests in this ballots
+        :return: a dictionary of contest vote limits of all the contests in this election
         """
         # fill in dictionary when it's empty
         if not bool(self.contest_vote_limits):
@@ -209,7 +223,6 @@ class VoteLimitCounter:
         """
         fill in the num_max_vote dictionary, key- contest name, value- maximum votes allowed for this contest
         source: description
-        :return:
         """
 
         contests = self.description_dic.get('contests')

@@ -20,7 +20,7 @@ class KeyGenerationVerifier(IVerifier):
         verify all guardians' key generation info by examining challenge values and equations
         :return: True if no error were found in any guardian, False if some errors found in some or all guardians
         """
-        error = self.initiate_error()
+        error = self.initialize_error()
 
         for i in range(self.num_of_guardians):
             res = self.verify_one_guardian(i)
@@ -41,11 +41,11 @@ class KeyGenerationVerifier(IVerifier):
         """
         coefficients_dic = self.__get_guardian_coeff_by_index(index)
 
-        error = self.initiate_error()
+        error = self.initialize_error()
 
         # loop through every proof
         for i in range(self.quorum):
-            error = self.initiate_error()
+            error = self.initialize_error()
             # get given values
             coeff_proofs_dic = coefficients_dic.get('coefficient_proofs')[i]
             response = coeff_proofs_dic.get('response')      # u

@@ -13,7 +13,6 @@ class BaselineVerifier(IVerifier):
 
         # constants
         self.DICT_KEYS = {'cofactor', 'generator', 'large_prime', 'small_prime'}
-        self.DEFAULT_K = 50
         self.LARGE_PRIME_EXPECTED = (int(('''104438888141315250669175271071662438257996424904738378038423348328
 3953907971553643537729993126875883902173634017777416360502926082946377942955704498
 5420976148418252467735806893983863204397479111608977315510749039672438834271329188
@@ -38,28 +37,22 @@ class BaselineVerifier(IVerifier):
         :return: True if all parameters are verified to fit in designated equations or have specific values,
                 False otherwise
         """
-        error = self.initiate_error()
+        error = self.initialize_error()
 
         # check if p and q are the expected values
         if not number.equals(self.large_prime, self.LARGE_PRIME_EXPECTED):
-            error = self.set_error()
-            print("Large prime value error. ")
+            # if not, use Miller-Rabin algorithm to check the primality of p and q, 5 iterations by default
+            if not number.is_prime(self.large_prime):
+                error = self.set_error()
+                print("Large prime value error. ")
+
         if not number.equals(self.small_prime, self.SMALL_PRIME_EXPECTED):
-            error = self.set_error()
-            print("Small prime value error. ")
+            if not number.is_prime(self.small_prime):
+                error = self.set_error()
+                print("Small prime value error. ")
 
         # get basic parameters
         cofactor = self.param_g.get_cofactor()
-
-        # use Miller-Rabin algorithm to check the primality of p and q
-        # set iteration to run 50 times by default
-        if not number.is_prime(self.large_prime, self.DEFAULT_K):
-            error = self.set_error()
-            print("p is not a prime. ")
-
-        if not number.is_prime(self.small_prime, self.DEFAULT_K):
-            error = self.set_error()
-            print("q is not a prime. ")
 
         # check equation p - 1 = qr
         if not number.equals(self.large_prime - 1, self.small_prime * cofactor):

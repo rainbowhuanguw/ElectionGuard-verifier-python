@@ -1,6 +1,6 @@
-from project.contest_verifier import TallyContestVerifier
-from project.interfaces import IVerifier
+from project.interfaces import IVerifier, IBallotVerifier, IContestVerifier, ISelectionVerifier
 from project.generator import ParameterGenerator
+from project import number
 
 
 class TallyDecryptionVerifier(IVerifier):
@@ -38,18 +38,17 @@ class TallyDecryptionVerifier(IVerifier):
 
         :return:
         """
-        error = self.initiate_error()
+        error = self.initialize_error()
 
         spoiled_ballot_names = list(self.spoiled_ballots.keys())
         for spoiled_ballot_name in spoiled_ballot_names:
             if not self.verify_a_spoiled_ballot(spoiled_ballot_name):
                 error = self.set_error()
 
-        output = "Spoiled ballot decryption"
         if error:
-            output += " failure. "
+            print("Spoiled ballot decryption failure. ")
         else:
-            output += " success"
+            print("Spoiled ballot decryption success. ")
 
         return not error
 
@@ -61,18 +60,227 @@ class TallyDecryptionVerifier(IVerifier):
         :param tally_name:
         :return:
         """
-        error = self.initiate_error()
+        error = self.initialize_error()
         for contest_name in contest_names:
             contest = contest_dic.get(contest_name)
             tcv = TallyContestVerifier(contest, self.param_g)
             if not tcv.verify_a_contest():
                 error = self.set_error()
 
-        output = tally_name + ' decryption verification '
         if error:
-            output += 'failure. '
+            print(tally_name + ' [box 9] decryption verification failure. ')
         else:
-            output += 'success. '
-        print(output)
+            print(tally_name + ' [box 9] decryption verification success. ')
 
         return not error
+
+
+class TallyContestVerifier(IContestVerifier):
+    """
+    This class is responsible for checking a contest
+    """
+    def __init__(self, contest_dic: dict, param_g: ParameterGenerator):
+        super().__init__(param_g)
+        self.contest_dic = contest_dic
+        self.public_keys = param_g.get_public_keys_of_all_guardians()
+        self.selections = self.contest_dic.get('selections')
+        self.selection_names = list(self.selections.keys())
+        self.contest_id = self.contest_dic.get('object_id')
+
+    def verify_a_contest(self) -> bool:
+        """
+
+        :return:
+        """
+        error = self.initialize_error()
+        for selection_name in self.selection_names:
+            selection = self.selections.get(selection_name)
+            tsv = TallySelectionVerifier(selection, self.param_g)
+            if not tsv.verify_a_selection():
+                error = self.set_error()
+
+        if error:
+            print(self.contest_id + ' tally decryption failure. ')
+
+        return not error
+
+
+class TallySelectionVerifier(ISelectionVerifier):
+    def __init__(self, selection_dic: dict, param_g: ParameterGenerator):
+        super().__init__(param_g)
+        self.selection_dic = selection_dic
+        self.selection_id = selection_dic.get('object_id')
+        self.pad = int(self.selection_dic.get('message', {}).get('pad'))
+        self.data = int(self.selection_dic.get('message', {}).get('data'))
+        self.public_keys = param_g.get_public_keys_of_all_guardians()
+
+    def get_pad(self) -> int:
+        """
+        get a selection's alpha and beta
+        :return:
+        """
+        return self.pad
+
+    def get_data(self) -> int:
+        return self.data
+
+    def verify_a_selection(self) -> bool:
+        """
+
+        :return:
+        """
+        shares = self.selection_dic.get('shares')
+        sv = ShareVerifier(shares, self.param_g, self.pad, self.data)
+        res = sv.verify_all_shares()
+        if not res:
+            print(self.selection_id + " tally verification error. ")
+
+        return res
+
+
+class ShareVerifier(IVerifier):
+    """
+    This class is used to check shares of decryption under each selections in election tally and spoiled ballots
+    """
+    def __init__(self, shares: list, param_g: ParameterGenerator, selection_pad: int, selection_data: int):
+        # calls IVerifier init
+        super().__init__(param_g)
+
+        self.shares = shares
+        self.selection_pad = selection_pad
+        self.selection_data = selection_data
+
+    def verify_all_shares(self) -> bool:
+        """
+        verify all shares of a tally decryption
+        :return: True if no error occur in any share, False if some error
+        """
+        error = self.initialize_error()
+        for index, share in enumerate(self.shares):
+            if not self.__verify_a_share(share):
+                error = self.set_error()
+                print("Guardian {} decryption error. ".format(index))
+
+        return not error
+
+    def __verify_a_share(self, share_dic: dict) -> bool:
+        """
+        verify one share at a time, check if
+        :param share_dic: a specific share inside the shares list
+        :return: True if no error found in share partial decryption, False if any error
+        """
+        error = self.initialize_error()
+
+        # check if the response vi is in the set Zq
+        response_correctness = self.__check_response(share_dic)
+
+        # check if the given ai, bi are both in set Zrp
+        pad_data_correctness = self.__check_data(share_dic) and self.__check_pad(share_dic)
+
+        if not response_correctness or not pad_data_correctness:
+            error = self.set_error()
+            print("partial decryption failure. ")
+
+        return not error
+
+    @staticmethod
+    def __check_response(share_dic: dict) -> bool:
+        """
+        check if the share response vi is in the set Zq
+        :param share_dic: a dictionary of a share
+        :return: True if the response is in set Zq, False if not
+        """
+        response = share_dic.get('proof', {}).get('response')
+
+        res = number.is_within_set_zq(response)
+        if not res:
+            print("response error. ")
+
+        return res
+
+    @staticmethod
+    def __check_pad(share_dic: dict) -> bool:
+        """
+        check if the given ai/pad of a share is in set Zrp
+        :param share_dic: a dictionary of a share
+        :return: True if this value is in set Zrp, False if not
+        """
+        pad = share_dic.get('proof', {}).get('pad')
+        res = number.is_within_set_zrp(pad)
+        if not res:
+            print("a/pad value error. ")
+
+        return res
+
+    @staticmethod
+    def __check_data(share_dic: dict) -> bool:
+        """
+        check if the given bi/data of a share is in set Zrp
+        :param share_dic: a dictionary of a share
+        :return: True if this value is in set Zrp, False if not
+        """
+        data = share_dic.get('proof', {}).get('data')
+        res = number.is_within_set_zrp(data)
+
+        if not res:
+            print("b/data value error. ")
+
+        return res
+
+    def __check_challenge(self, challenge: int, pad: int, data: int, partial_decrypt: int) -> bool:
+        """
+        check if the given challenge values Ci satisfies ci = H(Q-bar, (A,B), (ai, bi), Mi)
+        :param challenge: given challenge of a share, Ci, for comparison
+        :param pad: pad of a share, ai
+        :param data: data number of a share, bi
+        :param partial_decrypt: partial decryption of a guardian, Mi
+        :return: True if the given Ci equals to the ci computed using hash
+        """
+        challenge_computed = number.hash_elems(self.extended_hash, self.selection_pad, self.selection_data,
+                                               pad, data, partial_decrypt)
+
+        res = number.equals(challenge, challenge_computed)
+
+        if not res:
+            print("challenge value error. ")
+
+        return res
+
+    # TODO: add semantic meaning
+    def __check_equation1(self, response: int, pad: int, challenge: int, public_key: int) -> bool:
+        """
+        check if equation g ^ vi = ai * (Ki ^ ci) mod p is satisfied
+        :param response: response of a share, vi
+        :param pad: pad of a share, ai
+        :param public_key: public key of a guardian, Ki
+        :param challenge: challenge of a share, ci
+        :return True if the equation is satisfied, False if not
+        """
+        left = pow(self.generator, response, self.large_prime)
+        right = number.mod_p(pad * pow(public_key, challenge, self.large_prime))
+
+        res = number.equals(left, right)
+
+        if not res:
+            print("equation 1 error. ")
+
+        return res
+
+    # TODO: add semantic meaning
+    def __check_equation2(self, response: int, data: int, challenge: int, partial_decrypt: int) -> bool:
+        """
+        check if equation A ^ vi = bi * (M i^ ci) mod p is satisfied
+        :param response: response of a share, vi
+        :param data: data of a share, bi
+        :param challenge: challenge of a share, ci
+        :param partial_decrypt: partial decryption of a guardian, Mi
+        :return True if the equation is satisfied, False if not
+        """
+        left = pow(self.selection_pad, response, self.large_prime)
+        right = number.mod_p(data * pow(partial_decrypt, challenge, self.large_prime))
+
+        res = number.equals(left, right)
+        if not res:
+            print("equation 2 error. ")
+
+        return res
