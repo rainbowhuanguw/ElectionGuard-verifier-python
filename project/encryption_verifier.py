@@ -17,6 +17,10 @@ class AllBallotsVerifier(IBallotVerifier):
         self.folder_path = path_g.get_encrypted_ballot_folder_path()
 
     def verify_all_ballots(self) -> bool:
+        """
+        runs through the folder that contains ballot files once, runs encryption verification on every ballot
+        :return: True there is no error, False otherwise
+        """
         error = self.initialize_error()
         count = 0
         for ballot_file in glob.glob(self.folder_path + '*.json'):
@@ -261,8 +265,8 @@ class BallotSelectionVerifier(ISelectionVerifier):
         self.ZQ_PARAM_NAMES = {'challenge', 'response'}
 
         self.selection_dic = selection_dic
-        self.pad = int(self.selection_dic.get('ciphertext', {}).get('pad'))
-        self.data = int(self.selection_dic.get('ciphertext', {}).get('data'))
+        self.pad = self.selection_dic.get('ciphertext', {}).get('pad')
+        self.data = self.selection_dic.get('ciphertext', {}).get('data')
 
     def get_pad(self) -> int:
         """
@@ -280,10 +284,9 @@ class BallotSelectionVerifier(ISelectionVerifier):
 
     def is_placeholder_selection(self) -> bool:
         """
-        check if a selection is a placeholder
+
         :return:
         """
-
         return bool(self.selection_dic.get('is_placeholder_selection'))
 
     # --------------------------------------- validity check ----------------------------------------------------

@@ -46,7 +46,7 @@ class IBallotVerifier(IVerifier):
 class IContestVerifier(IVerifier):
     """
     Contest verifier as an interface, will be implemented in every contest-level verifier,
-    including BallotContestVerifier and TallyContestVerifier
+    including BallotContestVerifier and DecryptionContestVerifier
     """
     def verify_a_contest(self) -> bool:
         pass
@@ -55,7 +55,7 @@ class IContestVerifier(IVerifier):
 class ISelectionVerifier(IVerifier):
     """
     Selection verifier as an interface, will be implemented in every selection-level verifier,
-    including BallotSelectionVerifier and TallyContestVerifier
+    including BallotSelectionVerifier and DecryptionContestVerifier
     """
     def get_pad(self) -> int:
         pass

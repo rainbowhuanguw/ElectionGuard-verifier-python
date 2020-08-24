@@ -1,27 +1,84 @@
-from project.interfaces import IVerifier, IBallotVerifier, IContestVerifier, ISelectionVerifier
-from project.generator import ParameterGenerator
+from project.interfaces import IVerifier, IContestVerifier, ISelectionVerifier
+from project.generator import ParameterGenerator, FilePathGenerator, SelectionInfoAggregator
 from project import number
+from project.json_parser import read_json_file
 
 
-class TallyDecryptionVerifier(IVerifier):
+class DecryptionVerifier(IVerifier):
     """
     This class is responsible for box 6, tally decryption, where the verifier will check the total
     tally of ballot selections matches the actual selections
     """
-    def __init__(self, tally_dic: dict, param_g: ParameterGenerator):
+    def __init__(self, path_g: FilePathGenerator, param_g: ParameterGenerator):
         super().__init__(param_g)
-        self.tally_dic = tally_dic
+        self.path_g = path_g
+        self.tally_dic = read_json_file(path_g.get_tally_file_path())
         self.contests = self.tally_dic.get('contests')
         self.spoiled_ballots = self.tally_dic.get('spoiled_ballots')
 
     def verify_cast_ballot_tallies(self) -> bool:
         """
-
+        confirm for each (non-dummy) option in each contest in the ballot coding file that the aggregate encryption,
+        (𝐴, 𝐵) satisfies 𝐴 = ∏ 𝛼 and 𝐵 = ∏ 𝛽 where the (𝛼 , 𝛽) are the corresponding encryptions on all cast ballots
+        in the election record.
+        verify confirm for each (non-dummy) option in each contest in the ballot coding file the
+        following for each decrypting trustee 𝑇
         :return:
         """
+        total_error, share_error = self.initialize_error(), self.initialize_error()
+
         tally_name = self.tally_dic.get('object_id')
         contest_names = list(self.contests.keys())
-        return self.__make_all_contest_verification(self.contests, contest_names, tally_name)
+
+        # confirm that the aggregate encryption are the accumulative product of all
+        # corresponding encryptions on all cast ballots
+        aggregator = SelectionInfoAggregator(self.path_g, self.param_g)
+        dics_by_contest = aggregator.get_dics()
+        total_data_dic = aggregator.get_total_data()
+        total_pad_dic = aggregator.get_total_pad()
+        total_res = self.__match_total_across_ballots(aggregator, contest_names,
+                                                      dics_by_contest, total_pad_dic, total_data_dic)
+        if not total_res:
+            total_error = self.set_error()
+
+        # confirm for each decrypting trustee Ti
+        share_res = self.__make_all_contest_verification(self.contests, contest_names, tally_name)
+        if not share_res:
+            share_error = self.set_error()
+
+        return not (total_error and share_error)
+
+    def __match_total_across_ballots(self, aggregator: SelectionInfoAggregator, contest_names: list,
+                                     dics: list, total_pad_dic: dict, total_data_dic: dict) -> bool:
+        """
+        check if the total pad and data from the tally file with the accumulative product across ballots
+        are equal
+        :param dics:
+        :return:
+        """
+        error = self.initialize_error()
+
+        for contest_name in contest_names:
+            # get the corresponding index of pad and data dictionaries given contest name
+            pad_dic_idx = aggregator.get_dic_id_by_contest_name(contest_name, 'a')
+            data_dic_idx = aggregator.get_dic_id_by_contest_name(contest_name, 'b')
+            pad_dic = dics[pad_dic_idx]
+            data_dic = dics[data_dic_idx]
+
+            selection_names = list(pad_dic.keys())
+            for selection_name in selection_names:
+                accum_pad = pad_dic.get(selection_name)
+                tally_pad = total_pad_dic.get(contest_name, {}).get(selection_name)
+                accum_data = data_dic.get(selection_name)
+                tally_data = total_data_dic.get(contest_name, {}).get(selection_name)
+                if not number.equals(accum_pad, tally_pad):
+                    error = self.set_error()
+                if not number.equals(accum_data, tally_data):
+                    error = self.set_error()
+        if error:
+            print("Tally error.")
+
+        return not error
 
     def verify_a_spoiled_ballot(self, ballot_name: str) -> bool:
         """
@@ -63,7 +120,7 @@ class TallyDecryptionVerifier(IVerifier):
         error = self.initialize_error()
         for contest_name in contest_names:
             contest = contest_dic.get(contest_name)
-            tcv = TallyContestVerifier(contest, self.param_g)
+            tcv = DecryptionContestVerifier(contest, self.param_g)
             if not tcv.verify_a_contest():
                 error = self.set_error()
 
@@ -75,7 +132,7 @@ class TallyDecryptionVerifier(IVerifier):
         return not error
 
 
-class TallyContestVerifier(IContestVerifier):
+class DecryptionContestVerifier(IContestVerifier):
     """
     This class is responsible for checking a contest
     """
@@ -95,7 +152,7 @@ class TallyContestVerifier(IContestVerifier):
         error = self.initialize_error()
         for selection_name in self.selection_names:
             selection = self.selections.get(selection_name)
-            tsv = TallySelectionVerifier(selection, self.param_g)
+            tsv = DecryptionSelectionVerifier(selection, self.param_g)
             if not tsv.verify_a_selection():
                 error = self.set_error()
 
@@ -105,7 +162,7 @@ class TallyContestVerifier(IContestVerifier):
         return not error
 
 
-class TallySelectionVerifier(ISelectionVerifier):
+class DecryptionSelectionVerifier(ISelectionVerifier):
     def __init__(self, selection_dic: dict, param_g: ParameterGenerator):
         super().__init__(param_g)
         self.selection_dic = selection_dic

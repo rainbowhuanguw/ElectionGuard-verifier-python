@@ -1,4 +1,6 @@
 from project.json_parser import read_json_file
+import glob
+from project import number
 
 
 class FilePathGenerator:
@@ -230,3 +232,186 @@ class VoteLimitCounter:
             contest_name = contest.get('object_id')
             num_max_vote = contest.get('votes_allowed')
             self.contest_vote_limits[contest_name] = int(num_max_vote)
+
+
+class SelectionInfoAggregator:
+    # TODO:
+    def __init__(self, path_g: FilePathGenerator, param_g: ParameterGenerator):
+        self.param_g = param_g
+        self.path_g = path_g
+        self.order_names_dic = {}   # a dictionary to store the contest names and its sequence
+        self.names_order_dic = {}
+        self.contest_selection_names = {}  # a dictionary to store the contest names and its selection names
+        self.dics_by_contest = []   # a list to store all the dics, length = 2 * contest_names
+        self.total_pad_dic = {}
+        self.total_data_dic = {}
+
+    def get_dics(self):
+        if len(self.dics_by_contest) == 0:
+            self.__create_inner_dic()
+            self.__fill_in_dics()
+        return self.dics_by_contest
+
+    def get_dic_id_by_contest_name(self, contest_name: str, type: str) -> int:
+        """
+        get the corresponding dataframe id in the dfs list by the name of contest
+        :param contest_name:
+        :param type:
+        :return:
+        """
+        if type == 'a':
+            return 2 * self.order_names_dic[contest_name]
+        elif type == 'b':
+            return 2 * self.order_names_dic[contest_name] + 1
+
+    def __create_inner_dic(self):
+        """
+        create 2 * contest names number of dicts. Two for each contest, one for storing pad values,
+        one for storing data values. Fill in column names with selections in that specific contest
+        :return:
+        """
+        # get number of contest names
+        if len(self.order_names_dic.keys()) == 0:
+            self.__fill_in_contest_dicts()
+
+        num = len(self.order_names_dic.keys())
+
+        # create 2 * contest name number of lists
+        for i in range(num * 2):
+
+            # get the corresponding contest and selections of this list
+            contest_idx = int(i / 2)
+            contest_name = self.names_order_dic.get(contest_idx)
+            selection_names = self.contest_selection_names.get(contest_name)
+
+            # create new dict
+            curr_dic = {}
+            for selection_name in selection_names:
+                curr_dic[selection_name] = ''  # store strings not integers in dic
+
+            # append to dic list
+            self.dics_by_contest.append(curr_dic)
+
+    def __fill_in_dics(self):
+        """
+        alternative way of getting the data
+        loop over the folder that stores all encrypted ballots, go through every ballot to get the selection
+        pad and data
+        :return:
+        """
+        # get to the folder
+        ballot_folder_path = self.path_g.get_encrypted_ballot_folder_path()
+
+        # loop over every ballot file
+        for ballot_file in glob.glob(ballot_folder_path + '*json'):
+            ballot = read_json_file(ballot_file)
+            ballot_name = ballot.get('object_id')
+            ballot_state = ballot.get('state')
+
+            # ignore spoiled ballots
+            if ballot_state == 'CAST':
+
+                # loop over every contest
+                contests = ballot.get('contests')
+                for contest in contests:
+                    contest_name = contest.get('object_id')
+                    selections = contest.get('ballot_selections')
+                    contest_idx = self.order_names_dic.get(contest_name)
+                    curr_pad_dic = self.dics_by_contest[contest_idx * 2]
+                    curr_data_dic = self.dics_by_contest[contest_idx * 2 + 1]
+
+                    # loop over every selection
+                    for selection in selections:
+                        selection_name = selection.get('object_id')
+                        is_placeholder_selection = selection.get('is_placeholder_selection')
+
+                        # ignore placeholders
+                        if not is_placeholder_selection:
+                            pad = selection.get('ciphertext', {}).get('pad')
+                            data = selection.get('ciphertext', {}).get('data')
+                            self.__get_accum_product(curr_pad_dic, selection_name, int(pad))
+                            self.__get_accum_product(curr_data_dic, selection_name, int(data))
+
+    @staticmethod
+    def __get_accum_product(dic: dict, selection_name: str, num: int):
+        """
+        get the accumulative product of pad and data for all the selections
+        :param dic:
+        :param selection_name:
+        :param num:
+        :return:
+        """
+        if dic.get(selection_name) == '':
+            dic[selection_name] = str(num)
+        else:
+            temp = int(dic[selection_name])
+            product = number.mod_p(temp * num)
+            dic[selection_name] = str(product)
+
+    def __fill_total_pad_data(self):
+        """
+        read pad and data of each non dummy selections in all contests
+        :return:
+        """
+        tally_path = self.path_g.get_tally_file_path()
+        tally = read_json_file(tally_path)
+        contests = tally.get('contests')
+        contest_names = list(contests.keys())
+        for contest_name in contest_names:
+            curr_dic_pad = {}
+            curr_dic_data = {}
+            contest = contests.get(contest_name)
+            selections = contest.get('selections')
+            selection_names = list(selections.keys())
+            for selection_name in selection_names:
+                selection = selections.get(selection_name)
+                total_pad = selection.get('message', {}).get('pad')
+                total_data = selection.get('message', {}).get('data')
+                curr_dic_pad[selection_name] = total_pad
+                curr_dic_data[selection_name] = total_data
+            self.total_pad_dic[contest_name] = curr_dic_pad
+            self.total_data_dic[contest_name] = curr_dic_data
+
+    def __fill_in_contest_dicts(self):
+        """
+        get contest names, its corresponding sequence, and its corresponding selection names from description,
+        (1) order_names_dic : key - sequence order, value - contest name
+        (2) contest_selection_names: key - contest name, value - a list of selection names
+        :return: None
+        """
+        description_dic = self.param_g.get_description()
+        contests = description_dic.get('contests')
+
+        for contest in contests:
+            # fill in order_names_dic dict
+            # get contest names
+            contest_name = contest.get('object_id')
+            # get contest sequence
+            contest_sequence = contest.get('sequence_order')
+            self.order_names_dic[contest_name] = contest_sequence
+            self.names_order_dic[contest_sequence] = contest_name
+
+            # fill in contest_selection_names dict
+            curr_list = []
+            self.contest_selection_names[contest_name] = curr_list
+            selections = contest.get('ballot_selections')
+            for selection in selections:
+                # get selection names
+                selection_name = selection.get('object_id')
+                curr_list.append(selection_name)
+
+    def get_total_pad(self):
+        if len(self.total_pad_dic.keys()) == 0:
+            self.__fill_total_pad_data()
+
+        return self.total_pad_dic
+
+    def get_total_data(self):
+        if len(self.total_data_dic.keys()) == 0:
+            self.__fill_total_pad_data()
+
+        return self.total_data_dic
+
+
+
+
