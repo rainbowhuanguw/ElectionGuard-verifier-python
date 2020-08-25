@@ -1,5 +1,4 @@
 from typing import Tuple
-
 from project import json_parser, number
 from .generator import ParameterGenerator, FilePathGenerator, VoteLimitCounter
 from .interfaces import IBallotVerifier, IContestVerifier, ISelectionVerifier
@@ -23,27 +22,80 @@ class AllBallotsVerifier(IBallotVerifier):
         """
         error = self.initialize_error()
         count = 0
+        tracking_hashes = {}
+        timestamps = {}
+
+        # TODO: how to collect tracking hashes?
+
         for ballot_file in glob.glob(self.folder_path + '*.json'):
+            # verify all ballots, box 3 & 4
             ballot_dic = json_parser.read_json_file(ballot_file)
-            bvv = BallotEncryptionVerifier(ballot_dic, self.param_g, self.limit_counter)
-            res = bvv.verify_all_contests()
-            if not res:
+            bev = BallotEncryptionVerifier(ballot_dic, self.param_g, self.limit_counter)
+
+            #contest_res = bev.verify_all_contests()
+            #if not contest_res:
+            #    error = self.set_error()
+            #    count += 1
+
+            # aggregate tracking hashes, box 5
+            tracking_res = bev.verify_tracking_hash()
+            if not tracking_res:
                 error = self.set_error()
                 count += 1
 
         if error:
-            print("Ballot verification failure, {num} ballots didn't pass check. ".format(num=count))
+            print("[Box 3 & 4] Ballot verification failure, {num} ballots didn't pass check. ".format(num=count))
         else:
-            print("All {i} ballot verification success. ".format(i=count))
+            print("[Box 3 & 4] All ballot verification success. ".format(i=count))
+
+        if not self.verify_tracking_hashes(tracking_hashes):
+            error = self.set_error()
+
+        if error:
+            print("[Box 5] Tracking hashes verification failure. ")
+        else:
+            print("[Box 5] Tracking hashes verification success. ")
+
+        return not error
+
+    # TODO: errors here, 5.1 & 5.3
+    def verify_tracking_hashes(self, hashes_dic: dict) -> bool:
+        error = self.initialize_error()
+        # get all previous and current hashes
+        prev_hashes = set(hashes_dic.values())
+        curr_hashes = set(hashes_dic.keys())
+
+        # find the set that only contains first and last hash
+        union_set = prev_hashes.union(curr_hashes)
+        intersection_set = prev_hashes.intersection(curr_hashes)
+        first_last_set = union_set - intersection_set
+
+        first_hash, last_hash = 0, 0
+
+        # find the first and last hash
+        for h in first_last_set:
+            if h in prev_hashes:
+                first_hash = h
+            elif h in curr_hashes:
+                last_hash = h
+
+        # verify the first hash H0 = H(Q-bar)
+        zero_hash = number.hash_elems(self.extended_hash)
+        if not number.equals(int(zero_hash), int(first_hash)):
+            error = self.set_error()
+
+        # verify the closing hash, H-bar = H(Hl, 'CLOSE')
+        closing_hash_computed = number.hash_elems(last_hash, 'CLOSE')
 
         return not error
 
 
 class BallotEncryptionVerifier(IBallotVerifier):
     """
-    This class checks ballot correctness on a ballot. Ballot correctness can be represented by:
+    This class checks ballot correctness on a single ballot. Ballot correctness can be represented by:
     1. correct encryption (of value 0 or 1) of each selection within each contest (box 3)
     2. selection limits are satisfied for each contest (box 4)
+    3. the running hash are correctly computed (box 5)
     """
 
     def __init__(self, ballot_dic: dict, param_g: ParameterGenerator, limit_counter: VoteLimitCounter):
@@ -78,6 +130,35 @@ class BallotEncryptionVerifier(IBallotVerifier):
                 print(ballot_id + ' [box 4] ballot limit check failure. ')
 
         return not (encrypt_error and limit_error)
+
+    def verify_tracking_hash(self) -> bool:
+        """
+        verify all the middle tracking hash
+        :return:
+        """
+        crypto_hash = self.ballot_dic.get('crypto_hash')
+        prev_hash, curr_hash = self.get_tracking_hash()
+        timestamp = self.get_timestamp()
+        curr_hash_computed = number.hash_elems(prev_hash, timestamp, crypto_hash)
+
+        res = number.equals(int(curr_hash), int(curr_hash_computed))
+        return res
+
+    def get_tracking_hash(self) -> Tuple[str, str]:
+        """
+
+        :return:
+        """
+        prev_hash = self.ballot_dic.get('previous_tracking_hash')
+        curr_hash = self.ballot_dic.get('tracking_hash')
+        return prev_hash, curr_hash
+
+    def get_timestamp(self) -> str:
+        """
+
+        :return:
+        """
+        return self.ballot_dic.get('timestamp')
 
 
 class BallotContestVerifier(IContestVerifier):
@@ -120,8 +201,8 @@ class BallotContestVerifier(IContestVerifier):
             sv = BallotSelectionVerifier(selection, self.param_g)
 
             # get alpha, beta products
-            selection_alpha_product = selection_alpha_product * sv.get_pad() % self.param_g.get_large_prime()
-            selection_beta_product = selection_beta_product * sv.get_data() % self.param_g.get_large_prime()
+            selection_alpha_product = selection_alpha_product * int(sv.get_pad()) % int(self.param_g.get_large_prime())
+            selection_beta_product = selection_beta_product * int(sv.get_data()) % int(self.param_g.get_large_prime())
 
             # check validity of a selection
             is_correct = sv.verify_selection_validity()
@@ -253,7 +334,7 @@ class BallotContestVerifier(IContestVerifier):
 
 class BallotSelectionVerifier(ISelectionVerifier):
     """
-    This class is responsible for verify one selection at a time,
+    This class is responsible for verifying one selection at a time,
     its main purpose is to confirm selection validity,
     will be used in ballot_validity_verifier
     """
@@ -265,8 +346,8 @@ class BallotSelectionVerifier(ISelectionVerifier):
         self.ZQ_PARAM_NAMES = {'challenge', 'response'}
 
         self.selection_dic = selection_dic
-        self.pad = self.selection_dic.get('ciphertext', {}).get('pad')
-        self.data = self.selection_dic.get('ciphertext', {}).get('data')
+        self.pad = int(self.selection_dic.get('ciphertext', {}).get('pad'))
+        self.data = int(self.selection_dic.get('ciphertext', {}).get('data'))
 
     def get_pad(self) -> int:
         """
@@ -377,7 +458,8 @@ class BallotSelectionVerifier(ISelectionVerifier):
 
         return not error
 
-    def __check_cp_proof_zero_proof(self, pad, data, zero_pad, zero_data, zero_chal, zero_res) -> bool:
+    def __check_cp_proof_zero_proof(self, pad: int, data: int, zero_pad: int, zero_data: int, zero_chal: int,
+                                    zero_res: int) -> bool:
         """
 
         :param pad:
@@ -389,10 +471,10 @@ class BallotSelectionVerifier(ISelectionVerifier):
         :return:
         """
         equ1_left = pow(self.generator, zero_res, self.large_prime)
-        equ1_right = number.mod_p(zero_pad * pow(pad, zero_chal, self.large_prime))
+        equ1_right = number.mod_p(int(zero_pad) * pow(pad, zero_chal, self.large_prime))
 
         equ2_left = pow(self.public_key, zero_res, self.large_prime)
-        equ2_right = number.mod_p(zero_data * pow(data, zero_chal, self.large_prime))
+        equ2_right = number.mod_p(int(zero_data) * pow(data, zero_chal, self.large_prime))
 
         res = number.equals(equ1_left, equ1_right) and number.equals(equ2_left, equ2_right)
 
@@ -401,7 +483,8 @@ class BallotSelectionVerifier(ISelectionVerifier):
 
         return res
 
-    def __check_cp_proof_one_proof(self, pad, data, one_pad, one_data, one_chal, one_res) -> bool:
+    def __check_cp_proof_one_proof(self, pad: int, data: int, one_pad: int, one_data: int, one_chal: int,
+                                   one_res: int) -> bool:
         """
 
         :param pad:
@@ -427,7 +510,7 @@ class BallotSelectionVerifier(ISelectionVerifier):
         return res
 
     @staticmethod
-    def __check_hash_comp(chal, zero_chal, one_chal) -> bool:
+    def __check_hash_comp(chal: int, zero_chal: int, one_chal: int) -> bool:
         """
         check if the equation c = c0 + c1 mod q is satisfied.
         :param chal:

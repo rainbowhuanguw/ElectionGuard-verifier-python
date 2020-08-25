@@ -1,6 +1,7 @@
 from project.json_parser import read_json_file
 import glob
 from project import number
+import os
 
 
 class FilePathGenerator:
@@ -10,7 +11,7 @@ class FilePathGenerator:
     remain unchanged
     """
 
-    def __init__(self, root_folder_path='/Users/rainbowhuang/Desktop/ElectionGuard/data_08132020/',
+    def __init__(self, root_folder_path="/Users/rainbowhuang/Desktop/ElectionGuard/data_08132020/",
                  num_of_guardians=5):
         """
         generate a file name generator with parameters from the json files
@@ -78,6 +79,12 @@ class FilePathGenerator:
         """
         return self.DATA_FOLDER_PATH + '/spoiled_ballots' + self.FILE_TYPE_SUFFIX
 
+    def get_device_folder_path(self) -> str:
+        """
+        get a path to the devices folder
+        :return:
+        """
+        return self.DATA_FOLDER_PATH + '/devices' + self.FILE_TYPE_SUFFIX
 
 class ParameterGenerator:
     """
@@ -203,6 +210,44 @@ class ParameterGenerator:
         context = read_json_file(context_file_path)
         return int(context.get('quorum'))
 
+    def get_num_of_ballots(self) -> int:
+        """
+
+        :return:
+        """
+        ballot_folder_path = self.path_g.get_encrypted_ballot_folder_path()
+        ballot_files = next(os.walk(ballot_folder_path))[2]
+        return len(ballot_files)
+
+    def get_num_of_spoiled_ballots(self) -> int:
+        """
+
+        :return:
+        """
+        spoiled_ballot_folder_path = self.path_g.get_spoiled_ballot_folder_path()
+        spoiled_ballot_files = next(os.walk(spoiled_ballot_folder_path))[2]
+        return len(spoiled_ballot_files)
+
+    def get_device_id(self) -> str:
+        """
+
+        :return:
+        """
+        device_folder_path = self.path_g.get_device_folder_path()
+        for file in glob.glob(device_folder_path + '*json'):
+            dic = read_json_file(file)
+            return dic.get('uuid')
+
+    def get_location(self) -> str:
+        """
+
+        :return:
+        """
+        device_folder_path = self.path_g.get_device_folder_path()
+        for file in glob.glob(device_folder_path + '*json'):
+            dic = read_json_file(file)
+            return dic.get('location')
+
 
 class VoteLimitCounter:
     def __init__(self, param_g: ParameterGenerator):
@@ -247,6 +292,10 @@ class SelectionInfoAggregator:
         self.total_data_dic = {}
 
     def get_dics(self):
+        """
+
+        :return:
+        """
         if len(self.dics_by_contest) == 0:
             self.__create_inner_dic()
             self.__fill_in_dics()
@@ -411,6 +460,8 @@ class SelectionInfoAggregator:
             self.__fill_total_pad_data()
 
         return self.total_data_dic
+
+
 
 
 
