@@ -61,7 +61,7 @@ class KeyGenerationVerifier(IVerifier):
                 error = self.set_error()
                 print("guardian {i}, quorum {j}, challenge number error. ".format(i=index, j=i))
             # check equation
-            if not self.__verify_equation(response, commitment, public_key, challenge):
+            if not self.__verify_individual_key_computation(response, commitment, public_key, challenge):
                 error = self.set_error()
                 print("guardian {i}, quorum {j}, equation error. ".format(i=index, j=i))
 
@@ -88,13 +88,13 @@ class KeyGenerationVerifier(IVerifier):
         """
         return number.mod_p(number.hash_elems(self.base_hash, public_key, commitment))
 
-    def __verify_equation(self, response: str, commitment: str, public_key: str, challenge: str) -> bool:
+    def __verify_individual_key_computation(self, response: str, commitment: str, public_key: str, challenge: str) -> bool:
         """
         check the equation generator ^ response mod p = (commitment * public key ^ challenge) mod p
-        :param response:
-        :param commitment:
-        :param public_key:
-        :param challenge:
+        :param response: response given by a guardian, ui,j
+        :param commitment: commitment given by a guardian, hi,j
+        :param public_key: public key of a guardian, Ki,j
+        :param challenge: challenge of a guardian, ci,j
         :return: True if both sides of the equations are equal, False otherwise
         """
         response = int(response)

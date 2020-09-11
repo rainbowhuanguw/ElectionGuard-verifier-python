@@ -8,22 +8,25 @@ class FilePathGenerator:
     """
     This class is responsible for navigating to different data files in the given dataset folder,
     the root folder path can be changed to where the whole dataset is stored and its inner structure should
-    remain unchanged
+    remain unchanged.
     """
 
-    def __init__(self, root_folder_path="/Users/rainbowhuang/Desktop/ElectionGuard/data_08132020/",
-                 num_of_guardians=5):
+    def __init__(self, root_folder_path="/Users/rainbowhuang/Desktop/ElectionGuard/data_08132020/"):
         """
         generate a file name generator with parameters from the json files
-        :param num_of_guardians: number of guardians, set default to 5 #TODO: how to coordinate?
         """
         # TODO: change to relative paths when push to git
         self.DATA_FOLDER_PATH = root_folder_path
         self.FILE_TYPE_SUFFIX = '.json'
         self.FOLDER_SUFFIX = '/'
 
-        # class variables
-        self.num_of_guardians = num_of_guardians
+    def get_coefficients_folder_path(self) -> str:
+        """
+        get the folder path to the coefficients
+        :return:
+        """
+        coeff_folder_path = '/coefficients'
+        return self.DATA_FOLDER_PATH + coeff_folder_path + self.FOLDER_SUFFIX
 
     def get_guardian_coefficient_file_path(self, index: int) -> str:
         """
@@ -31,10 +34,10 @@ class FilePathGenerator:
         :param index: index of a guardian, (0 - number of guardians)
         :return: a string of the coefficient
         """
-        coeff_file_path = '/coefficients/coefficient_validation_' \
+        coeff_file_path = 'coefficient_validation_' \
                           'set_hamilton-county-canvass-board-member-'
 
-        return self.DATA_FOLDER_PATH + coeff_file_path + str(index) + self.FILE_TYPE_SUFFIX
+        return self.get_coefficients_folder_path() + coeff_file_path + str(index) + self.FILE_TYPE_SUFFIX
 
     def get_context_file_path(self) -> str:
         """
@@ -82,9 +85,10 @@ class FilePathGenerator:
     def get_device_folder_path(self) -> str:
         """
         get a path to the devices folder
-        :return:
+        :return: a string representation of path to the devices.json file
         """
         return self.DATA_FOLDER_PATH + '/devices' + self.FILE_TYPE_SUFFIX
+
 
 class ParameterGenerator:
     """
@@ -167,9 +171,9 @@ class ParameterGenerator:
 
     def get_public_key_of_a_guardian(self, index: int) -> int:
         """
-
-        :param index:
-        :return:
+        get the public key Ki of a guardian
+        :param index: guardian index
+        :return: public key Ki of guardian i in integer
         """
         file_path = self.path_g.get_guardian_coefficient_file_path(index)
         coefficients = read_json_file(file_path)
@@ -177,8 +181,8 @@ class ParameterGenerator:
 
     def get_public_keys_of_all_guardians(self) -> list:
         """
-
-        :return:
+        get all the public keys of all guardians as a list
+        :return: a list of guardians' public keys
         """
         num_of_guardians = self.get_num_of_guardians()
         for i in range(num_of_guardians):
@@ -186,25 +190,48 @@ class ParameterGenerator:
 
     def get_description(self) -> dict:
         """
-
-        :return:
+        get the election description information as dictionary
+        :return: a dictionary representation of the description.json
         """
         file_path = self.path_g.get_description_file_path()
         return read_json_file(file_path)
 
     def get_num_of_guardians(self) -> int:
         """
+        check consistency and return the number of guardians of this election
+        :return: number of guardians in integer if the number is the same from context file and coefficient folder
+                if the number is inconsistent, returns -1
+        """
+        num_context = self.__get_num_of_guardians_from_context()
+        num_coeff = self.__get_num_of_guardians_from_file()
+        if num_context == num_coeff:
+            return num_context
+        else:
+            print("Number of guardian error. ")
+            return -1
 
-        :return:
+    def __get_num_of_guardians_from_context(self) -> int:
+        """
+        get number of guardians from the context.json
+        :return: number of guardians n in integer
         """
         context_file_path = self.path_g.get_context_file_path()
         context = read_json_file(context_file_path)
         return int(context.get('number_of_guardians'))
 
+    def __get_num_of_guardians_from_file(self) -> int:
+        """
+        get number of guardians from the number of coefficient files in the coefficients folder
+        :return: number of guardians n in integer
+        """
+        coeff_folder_path = self.path_g.get_coefficients_folder_path()
+        coeff_files = next(os.walk(coeff_folder_path))[2]
+        return len(coeff_files)
+
     def get_quorum(self) -> int:
         """
-
-        :return:
+        get the minimum number of presenting guardians in this election
+        :return: the minimum number of presenting guardians in integer
         """
         context_file_path = self.path_g.get_context_file_path()
         context = read_json_file(context_file_path)
@@ -212,8 +239,9 @@ class ParameterGenerator:
 
     def get_num_of_ballots(self) -> int:
         """
-
-        :return:
+        get the number of ballots by checking the number of ballot files (including spoiled ballots)
+         in the encrypted ballot folder
+        :return: number of ballots in integer
         """
         ballot_folder_path = self.path_g.get_encrypted_ballot_folder_path()
         ballot_files = next(os.walk(ballot_folder_path))[2]
@@ -221,8 +249,9 @@ class ParameterGenerator:
 
     def get_num_of_spoiled_ballots(self) -> int:
         """
-
-        :return:
+        get the number of spoiled ballots by checking the number of spoiled ballot files
+        in the spoiled ballot folder
+        :return: number of spoiled ballots in integer
         """
         spoiled_ballot_folder_path = self.path_g.get_spoiled_ballot_folder_path()
         spoiled_ballot_files = next(os.walk(spoiled_ballot_folder_path))[2]
@@ -230,8 +259,8 @@ class ParameterGenerator:
 
     def get_device_id(self) -> str:
         """
-
-        :return:
+        get the id of recording device
+        :return: the device id as string
         """
         device_folder_path = self.path_g.get_device_folder_path()
         for file in glob.glob(device_folder_path + '*json'):
@@ -240,8 +269,8 @@ class ParameterGenerator:
 
     def get_location(self) -> str:
         """
-
-        :return:
+        get the location information of the election
+        :return: location information as a string
         """
         device_folder_path = self.path_g.get_device_folder_path()
         for file in glob.glob(device_folder_path + '*json'):
@@ -250,6 +279,10 @@ class ParameterGenerator:
 
 
 class VoteLimitCounter:
+    """
+    This VoteLimitCounter class keeps track of the vote limits of all the contests in an election, generates a
+    dictionary of "contest name - maximum votes allowed" pairs. Used in the encryption verifier.
+    """
     def __init__(self, param_g: ParameterGenerator):
         self.description_dic = param_g.get_description()
         self.contest_vote_limits = {}
@@ -271,7 +304,6 @@ class VoteLimitCounter:
         fill in the num_max_vote dictionary, key- contest name, value- maximum votes allowed for this contest
         source: description
         """
-
         contests = self.description_dic.get('contests')
         for contest in contests:
             contest_name = contest.get('object_id')
@@ -280,7 +312,11 @@ class VoteLimitCounter:
 
 
 class SelectionInfoAggregator:
-    # TODO:
+    """
+    This SelectionInfoAggregator class aims at collecting and storing all the selection information across contest
+     in one place. Its final purpose is to create a list of dictionaries, each dictionary stands for a contest, inside a
+     dictionary are corresponding selection name and its alpha or beta values. Used in decryption verifier.
+    """
     def __init__(self, path_g: FilePathGenerator, param_g: ParameterGenerator):
         self.param_g = param_g
         self.path_g = path_g
@@ -293,8 +329,8 @@ class SelectionInfoAggregator:
 
     def get_dics(self):
         """
-
-        :return:
+        get the whole list of dictionaries of contest selection information
+        :return:a list of dictionaries of contest selection information
         """
         if len(self.dics_by_contest) == 0:
             self.__create_inner_dic()
@@ -303,10 +339,10 @@ class SelectionInfoAggregator:
 
     def get_dic_id_by_contest_name(self, contest_name: str, type: str) -> int:
         """
-        get the corresponding dataframe id in the dfs list by the name of contest
-        :param contest_name:
-        :param type:
-        :return:
+        get the corresponding dictionary id in the dictionary list by the name of contest
+        :param contest_name: name of a contest, noted as "object id" under contest
+        :param type: a or b, a stands for alpha, b stands for beta, to denote what values the target dictionary contains
+        :return: a dictionary of alpha or beta values of all the selections of a specific contest
         """
         if type == 'a':
             return 2 * self.order_names_dic[contest_name]
@@ -317,7 +353,7 @@ class SelectionInfoAggregator:
         """
         create 2 * contest names number of dicts. Two for each contest, one for storing pad values,
         one for storing data values. Fill in column names with selections in that specific contest
-        :return:
+        :return: none
         """
         # get number of contest names
         if len(self.order_names_dic.keys()) == 0:
@@ -343,10 +379,9 @@ class SelectionInfoAggregator:
 
     def __fill_in_dics(self):
         """
-        alternative way of getting the data
-        loop over the folder that stores all encrypted ballots, go through every ballot to get the selection
-        pad and data
-        :return:
+        loop over the folder that stores all encrypted ballots once, go through every ballot to get the selection
+        alpha/pad and beta/data
+        :return: none
         """
         # get to the folder
         ballot_folder_path = self.path_g.get_encrypted_ballot_folder_path()
@@ -384,11 +419,11 @@ class SelectionInfoAggregator:
     @staticmethod
     def __get_accum_product(dic: dict, selection_name: str, num: int):
         """
-        get the accumulative product of pad and data for all the selections
-        :param dic:
-        :param selection_name:
-        :param num:
-        :return:
+        get the accumulative product of alpha/pad and beta/data for all the selections
+        :param dic: the dictionary alpha or beta values are being added into
+        :param selection_name: name of a selection, noted as "object id" under a selection
+        :param num: a number being multiplied to get the final product
+        :return: none
         """
         if dic.get(selection_name) == '':
             dic[selection_name] = str(num)
@@ -399,8 +434,9 @@ class SelectionInfoAggregator:
 
     def __fill_total_pad_data(self):
         """
-        read pad and data of each non dummy selections in all contests
-        :return:
+        loop over the tally.json file and read alpha/pad and beta/data of each non dummy selections in all contests,
+        store these alphas and betas in the corresponding contest dictionary
+        :return: none
         """
         tally_path = self.path_g.get_tally_file_path()
         tally = read_json_file(tally_path)
@@ -450,12 +486,20 @@ class SelectionInfoAggregator:
                 curr_list.append(selection_name)
 
     def get_total_pad(self):
+        """
+        get the total alpha/pad of tallies of all contests
+        :return: a dictionary of alpha/pad of tallies of all contests
+        """
         if len(self.total_pad_dic.keys()) == 0:
             self.__fill_total_pad_data()
 
         return self.total_pad_dic
 
     def get_total_data(self):
+        """
+        get the total beta/data of tallies of all contests
+        :return: a dictionary of beta/data of tallies of all contests
+        """
         if len(self.total_data_dic.keys()) == 0:
             self.__fill_total_pad_data()
 

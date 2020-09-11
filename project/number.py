@@ -150,10 +150,9 @@ def is_within_set_zrp(num) -> bool:
 
 def mod_p(dividend) -> int:
     """
-    compute the modulus number by calculating dividend % divisor
+    compute the modulus number by calculating dividend mod p
     :param dividend: dividend, the number in front
-    :param divisor: divisor, the number behind
-    :return: dividend % divisor
+    :return: dividend mod p
     """
     dividend = int(dividend)
 
@@ -188,8 +187,12 @@ def multiply(*args, mod_num=1) -> int:
     return product % mod_num
 
 
-# main hash function
 def hash_elems(*a):
+    """
+    main hash function using SHA-256, used in generating data, reference:
+    :param a: elements being fed into the hash function
+    :return: a hash number of 256 bit
+    """
     h = hashlib.sha256()
     h.update("|".encode("utf-8"))
 

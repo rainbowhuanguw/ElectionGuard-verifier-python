@@ -9,6 +9,7 @@ class DecryptionVerifier(IVerifier):
     This class is responsible for box 6, tally decryption, where the verifier will check the total
     tally of ballot selections matches the actual selections
     """
+
     def __init__(self, path_g: FilePathGenerator, param_g: ParameterGenerator):
         super().__init__(param_g)
         self.path_g = path_g
@@ -136,6 +137,7 @@ class DecryptionContestVerifier(IContestVerifier):
     """
     This class is responsible for checking a contest
     """
+
     def __init__(self, contest_dic: dict, param_g: ParameterGenerator):
         super().__init__(param_g)
         self.contest_dic = contest_dic
@@ -199,6 +201,7 @@ class ShareVerifier(IVerifier):
     """
     This class is used to check shares of decryption under each selections in election tally and spoiled ballots
     """
+
     def __init__(self, shares: list, param_g: ParameterGenerator, selection_pad: int, selection_data: int):
         # calls IVerifier init
         super().__init__(param_g)

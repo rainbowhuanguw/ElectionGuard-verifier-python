@@ -7,7 +7,8 @@ import glob
 
 class AllBallotsVerifier(IBallotVerifier):
     """
-    This class checks ballot correctness on all the ballots, both spoiled and cast.
+    This class checks ballot encryption correctness on all the ballots, both spoiled and cast.(box 3, 4)
+    Checks tracking hash chain (box 5).
     """
 
     def __init__(self, param_g: ParameterGenerator, path_g: FilePathGenerator, limit_counter: VoteLimitCounter):
@@ -23,20 +24,22 @@ class AllBallotsVerifier(IBallotVerifier):
         error = self.initialize_error()
         count = 0
         tracking_hashes = {}
-        timestamps = {}
-
-        # TODO: how to collect tracking hashes?
 
         for ballot_file in glob.glob(self.folder_path + '*.json'):
             # verify all ballots, box 3 & 4
             ballot_dic = json_parser.read_json_file(ballot_file)
             bev = BallotEncryptionVerifier(ballot_dic, self.param_g, self.limit_counter)
 
-            #contest_res = bev.verify_all_contests()
-            #if not contest_res:
-            #    error = self.set_error()
-            #    count += 1
+            # verify correctness
+            contest_res = bev.verify_all_contests()
+            if not contest_res:
+                error = self.set_error()
+                count += 1
 
+            # verify tracking hash
+            # store tracking hashes in a dict
+            prev_hash, curr_hash = bev.get_tracking_hash()
+            tracking_hashes[curr_hash] = prev_hash
             # aggregate tracking hashes, box 5
             tracking_res = bev.verify_tracking_hash()
             if not tracking_res:
@@ -58,8 +61,13 @@ class AllBallotsVerifier(IBallotVerifier):
 
         return not error
 
-    # TODO: errors here, 5.1 & 5.3
     def verify_tracking_hashes(self, hashes_dic: dict) -> bool:
+        """
+        verifies the tracking hash chain correctness
+        NOTE: didn't check the first and closing hash3
+        :param hashes_dic: a dictionary of "previous tracking - current tracking " hash code pairs
+        :return: True if all the tracking hashes satisfy Bi, Hi = H(Hi-1, D, T, Bi)
+        """
         error = self.initialize_error()
         # get all previous and current hashes
         prev_hashes = set(hashes_dic.values())
@@ -81,6 +89,11 @@ class AllBallotsVerifier(IBallotVerifier):
 
         # verify the first hash H0 = H(Q-bar)
         zero_hash = number.hash_elems(self.extended_hash)
+        print(hashes_dic)
+        print(first_last_set)
+        print(self.extended_hash)
+        print(zero_hash)
+        print(first_hash)
         if not number.equals(int(zero_hash), int(first_hash)):
             error = self.set_error()
 
@@ -99,7 +112,6 @@ class BallotEncryptionVerifier(IBallotVerifier):
     """
 
     def __init__(self, ballot_dic: dict, param_g: ParameterGenerator, limit_counter: VoteLimitCounter):
-        """"""
         super().__init__(param_g, limit_counter)
         self.ballot_dic = ballot_dic
 
@@ -312,7 +324,7 @@ class BallotContestVerifier(IContestVerifier):
         match the placeholder numbers in each contest with the maximum
         :param contest_name: name/id of the contest
         :param num_of_placeholders: number of placeholders appear in this contest
-        :return:
+        :return: True if vote limit and the actual votes are matched, False if not
         """
         vote_limit = int(self.vote_limit_dic.get(contest_name))
 
@@ -334,9 +346,7 @@ class BallotContestVerifier(IContestVerifier):
 
 class BallotSelectionVerifier(ISelectionVerifier):
     """
-    This class is responsible for verifying one selection at a time,
-    its main purpose is to confirm selection validity,
-    will be used in ballot_validity_verifier
+    This class is responsible for verifying one selection at a time, its main purpose is to confirm selection validity.
     """
 
     def __init__(self, selection_dic: dict, param_g: ParameterGenerator):
@@ -351,30 +361,30 @@ class BallotSelectionVerifier(ISelectionVerifier):
 
     def get_pad(self) -> int:
         """
-        get a selection's alpha
-        :return:
+        get alpha/pad of a selection
+        :return: a selection's alpha/pad as integer
         """
         return self.pad
 
     def get_data(self) -> int:
         """
-
-        :return:
+        get beta/pad of a selection
+        :return: a selection's beta/data as integer
         """
         return self.data
 
     def is_placeholder_selection(self) -> bool:
         """
-
-        :return:
+        check if a selection is a placeholder/dummy
+        :return: True if it is, False if not
         """
         return bool(self.selection_dic.get('is_placeholder_selection'))
 
     # --------------------------------------- validity check ----------------------------------------------------
     def verify_selection_validity(self) -> bool:
         """
-        verify a selection within a contest
-        :return:
+        verify the encryption validity of a selection within a contest
+        :return: True if no error occurs, False if some errors
         """
         error = self.initialize_error()
 
@@ -444,8 +454,8 @@ class BallotSelectionVerifier(ISelectionVerifier):
     def __check_params_within_zq(self, param_dic: dict) -> bool:
         """
         check if the given values, c0, c1, v0, v1 are each in the set zq
-        :param param_dic:
-        :return:
+        :param param_dic: the dictionary containing all the parameters needed to be checked against
+        :return: True if c0, c1, v0, v1 are each in the set zq, False if any of them is not in set Zq
         """
         error = self.initialize_error()
 
@@ -461,14 +471,15 @@ class BallotSelectionVerifier(ISelectionVerifier):
     def __check_cp_proof_zero_proof(self, pad: int, data: int, zero_pad: int, zero_data: int, zero_chal: int,
                                     zero_res: int) -> bool:
         """
-
-        :param pad:
-        :param data:
-        :param zero_pad:
-        :param zero_data:
-        :param zero_chal:
-        :param zero_res:
-        :return:
+        check if Chaum-Pedersen proof zero proof is satisfied, g ^ v0 = a0 * alpha ^ c0 mod p,
+         K ^ v0 = b0 * beta ^ c0 mod p
+        :param pad: alpha of a selection
+        :param data: beta of a selection
+        :param zero_pad: zero_pad of a selection
+        :param zero_data: zero_data of a selection
+        :param zero_chal: zero_challenge of a selection
+        :param zero_res: zero_response of a selection
+        :return: True if both equations of the zero proof are satisfied, False if either is not satisfied
         """
         equ1_left = pow(self.generator, zero_res, self.large_prime)
         equ1_right = number.mod_p(int(zero_pad) * pow(pad, zero_chal, self.large_prime))
@@ -486,14 +497,15 @@ class BallotSelectionVerifier(ISelectionVerifier):
     def __check_cp_proof_one_proof(self, pad: int, data: int, one_pad: int, one_data: int, one_chal: int,
                                    one_res: int) -> bool:
         """
-
-        :param pad:
-        :param data:
-        :param one_pad:
-        :param one_data:
-        :param one_chal:
-        :param one_res:
-        :return:
+        check if Chaum-Pedersen proof one proof is satisfied, g ^ v1 = a1 * alpha ^ c1 mod p,
+        g ^ c1 * K ^ v1 = b1 * beta ^ c1 mod p
+        :param pad: alpha of a selection
+        :param data: beta of a selection
+        :param one_pad: one_pad of a selection
+        :param one_data: one_data of a selection
+        :param one_chal: one_challenge of a selection
+        :param one_res: one_response of a selection
+        :return: True if both equations of the one proof are satisfied, False if either is not satisfied
         """
         equ1_left = pow(self.generator, one_res, self.large_prime)
         equ1_right = number.mod_p(one_pad * pow(pad, one_chal, self.large_prime))
@@ -512,11 +524,11 @@ class BallotSelectionVerifier(ISelectionVerifier):
     @staticmethod
     def __check_hash_comp(chal: int, zero_chal: int, one_chal: int) -> bool:
         """
-        check if the equation c = c0 + c1 mod q is satisfied.
-        :param chal:
-        :param zero_chal:
-        :param one_chal:
-        :return:
+        check if the hash computation is correct, equation c = c0 + c1 mod q is satisfied.
+        :param chal: challenge of a selection
+        :param zero_chal: zero_challenge of a selection
+        :param one_chal: one_challenge of a selection
+        :return: True if the hash computation equation is satisfied, False if not
         """
         # calculated expected challenge value: c0 + c1 mod q
         expected = number.mod_q(int(zero_chal) + int(one_chal))
@@ -531,15 +543,15 @@ class BallotSelectionVerifier(ISelectionVerifier):
     # --------------------------------------- limit check ----------------------------------------------------
     def verify_selection_limit(self) -> bool:
         """
-
-        :return:
+        check if selection limit has been exceeded
+        :return: True if no selection limit has been exceeded, False if any
         """
         return self.__check_a_b()
 
     def __check_a_b(self) -> bool:
         """
         check if a selection's a and b are in set Zrp - box 4, limit check
-        :return: True if a and b both within set zrp
+        :return: True if a and b both within set Zrp, False if either is not in set Zrp
         """
 
         a_res = number.is_within_set_zrp(self.pad)
