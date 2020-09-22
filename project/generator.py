@@ -1,6 +1,6 @@
-from project.json_parser import read_json_file
+from json_parser import read_json_file
 import glob
-from project import number
+import number
 import os
 
 
@@ -11,11 +11,10 @@ class FilePathGenerator:
     remain unchanged.
     """
 
-    def __init__(self, root_folder_path="/Users/rainbowhuang/Desktop/ElectionGuard/data_08132020/"):
+    def __init__(self, root_folder_path="../data/"):
         """
         generate a file name generator with parameters from the json files
         """
-        # TODO: change to relative paths when push to git
         self.DATA_FOLDER_PATH = root_folder_path
         self.FILE_TYPE_SUFFIX = '.json'
         self.FOLDER_SUFFIX = '/'
@@ -185,8 +184,7 @@ class ParameterGenerator:
         :return: a list of guardians' public keys
         """
         num_of_guardians = self.get_num_of_guardians()
-        for i in range(num_of_guardians):
-            yield self.get_public_key_of_a_guardian(i)
+        return [self.get_public_key_of_a_guardian(i) for i in range(num_of_guardians)]
 
     def get_description(self) -> dict:
         """
