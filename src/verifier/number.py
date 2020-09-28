@@ -124,9 +124,11 @@ def is_within_range(num, lower_bound: int, upper_bound: int) -> bool:
     return lower_bound < num < upper_bound
 
 
+
 def is_within_set_zq(num) -> bool:
     """
-    check if a number is within set Zq,
+    check if a number is within set Zq, Z𝑝 ={0,1,2,...,q−1} is the additive group of 
+    the integers modulo q.
     :param num: target number needs to be checked against
     :return:  True if  0 <= num < q , False otherwise
     """
@@ -135,6 +137,16 @@ def is_within_set_zq(num) -> bool:
     # exclusive bounds, set lower bound to -1
     return is_within_range(num, 0 - 1, SMALL_PRIME)
 
+def is_within_set_zstarp(num) -> bool:
+    """
+    check if a number is within set Z*p, Z*𝑝 ={1,2,...,𝑝−1} is the multiplicative subgroup of Zp
+    :param num: target number needs to be checked against
+    :return:  True if  0 <= num < p , False otherwise
+    """
+    num = int(num)
+
+    # exclusive bounds, set lower bound to -1
+    return is_within_range(num, 0, LARGE_PRIME)
 
 def is_within_set_zrp(num) -> bool:
     """
@@ -161,9 +173,9 @@ def mod_p(dividend) -> int:
 
 def mod_q(dividend) -> int:
     """
-
-    :param dividend:
-    :return:
+    compute the modulus number by calculating dividend mod q
+    :param dividend: dividend, the number in front
+    :return: dividend mod q
     """
     dividend = int(dividend)
 
@@ -172,9 +184,10 @@ def mod_q(dividend) -> int:
 
 def multiply(*args, mod_num=1) -> int:
     """
-
-    :param mod_num:
-    :return:
+    compute the accumulative product of multiple numbers and returns the product 
+    mod a given number 
+    :param mod_num: modulus, sets to 1 by default
+    :return: the accumulative product of multiple numbers mod a given number
     """
     product = 1
     for arg in args:

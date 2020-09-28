@@ -1,6 +1,7 @@
-import json_parser, number
-from generator import ParameterGenerator, FilePathGenerator
-from interfaces import IVerifier
+from .json_parser import read_json_file
+from .number import mod_p, equals, hash_elems
+from .generator import ParameterGenerator, FilePathGenerator
+from .interfaces import IVerifier
 
 
 class KeyGenerationVerifier(IVerifier):
@@ -57,7 +58,7 @@ class KeyGenerationVerifier(IVerifier):
             challenge_computed = self.__compute_guardian_challenge_threshold_separated(public_key, commitment)
 
             # check if the computed challenge value matches the given
-            if not number.equals(challenge, challenge_computed):
+            if not equals(challenge, challenge_computed):
                 error = self.set_error()
                 print("guardian {i}, quorum {j}, challenge number error. ".format(i=index, j=i))
             # check equation
@@ -76,7 +77,7 @@ class KeyGenerationVerifier(IVerifier):
         if index >= self.num_of_guardians or index < 0:
             raise IndexError("index out of bound")
         coeff_file_path = self.path_g.get_guardian_coefficient_file_path(index)
-        return json_parser.read_json_file(coeff_file_path)
+        return read_json_file(coeff_file_path)
 
     def __compute_guardian_challenge_threshold_separated(self, public_key: int, commitment: int) -> int:
         """
@@ -86,7 +87,7 @@ class KeyGenerationVerifier(IVerifier):
         :param commitment: commitment, under each guardian, previously listed as h
         :return: a challenge value of a guardian, separated by quorum
         """
-        return number.mod_p(number.hash_elems(self.base_hash, public_key, commitment))
+        return mod_p(hash_elems(self.base_hash, public_key, commitment))
 
     def __verify_individual_key_computation(self, response: str, commitment: str, public_key: str, challenge: str) -> bool:
         """
@@ -103,6 +104,6 @@ class KeyGenerationVerifier(IVerifier):
         challenge = int(challenge)
 
         left = pow(self.generator, response, self.large_prime)
-        right = number.mod_p(commitment * pow(public_key, challenge, self.large_prime))
+        right = mod_p(commitment * pow(public_key, challenge, self.large_prime))
 
-        return number.equals(left, right)
+        return equals(left, right)

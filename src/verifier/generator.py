@@ -1,6 +1,6 @@
-from json_parser import read_json_file
+from .json_parser import read_json_file
 import glob
-import number
+from .number import mod_p
 import os
 
 
@@ -387,7 +387,6 @@ class SelectionInfoAggregator:
         # loop over every ballot file
         for ballot_file in glob.glob(ballot_folder_path + '*json'):
             ballot = read_json_file(ballot_file)
-            ballot_name = ballot.get('object_id')
             ballot_state = ballot.get('state')
 
             # ignore spoiled ballots
@@ -427,7 +426,7 @@ class SelectionInfoAggregator:
             dic[selection_name] = str(num)
         else:
             temp = int(dic[selection_name])
-            product = number.mod_p(temp * num)
+            product = mod_p(temp * num)
             dic[selection_name] = str(product)
 
     def __fill_total_pad_data(self):
