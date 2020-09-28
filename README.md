@@ -7,18 +7,18 @@ The code follows the instruction and requirements of this [specification documen
 
 
 * Design Structure
-![Design Structure](https://github.com/rainbowhuanguw/ElectionGuard-verifier-python/blob/master/visualizations/ElectionGuard%20ood%20design%20-%20high%20level.jpeg)
+![Design Structure](https://github.com/rainbowhuanguw/ElectionGuard-verifier-python/blob/master/docs/images/ElectionGuard%20ood%20design%20-%20high%20level.jpeg)
 
 * UML Class Diagram
-![UML Class Diagram](https://github.com/rainbowhuanguw/ElectionGuard-verifier-python/blob/master/visualizations/ElectionGuard%20ood%20design%20-%20detailed%20level.jpeg)
+![UML Class Diagram](https://github.com/rainbowhuanguw/ElectionGuard-verifier-python/blob/master/docs/images/ElectionGuard%20ood%20design%20-%20detailed%20level.jpeg)
 
 
 
 Some visualizations can help to understand the core portion of the verifier, encryption and decryption.
 
 * What are we trying to do in the encryption process:
-![Encryption process illustration](https://github.com/rainbowhuanguw/ElectionGuard-verifier-python/blob/master/visualizations/ElectionGuard%20visualizations%20-%20encryption.jpeg)
+![Encryption process illustration](https://github.com/rainbowhuanguw/ElectionGuard-verifier-python/blob/master/docs/images/ElectionGuard%20visualizations%20-%20encryption.jpeg)
 
 
 * What are we trying to do in the decryption process:
-![Decryption process illustration](https://github.com/rainbowhuanguw/ElectionGuard-verifier-python/blob/master/visualizations/ElectionGuard%20visualizations%20-%20decryption.jpeg)
+![Decryption process illustration](https://github.com/rainbowhuanguw/ElectionGuard-verifier-python/blob/master/docs/images/ElectionGuard%20visualizations%20-%20decryption.jpeg)
