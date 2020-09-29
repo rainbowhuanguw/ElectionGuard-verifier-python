@@ -1,9 +1,10 @@
+import glob
 from typing import Tuple
+from . import number
 from .json_parser import read_json_file
-from .number import mod_p, mod_q, equals, hash_elems, is_within_set_zq, is_within_set_zrp
 from .generator import ParameterGenerator, FilePathGenerator, VoteLimitCounter
 from .interfaces import IBallotVerifier, IContestVerifier, ISelectionVerifier
-import glob
+
 
 """
 This module is created for the encryption verification, which covers boxes 3, 4, 5 of the specification document. 
@@ -107,13 +108,13 @@ class AllBallotsVerifier(IBallotVerifier):
                 last_hash = h
 
         # verify the first hash H0 = H(Q-bar)
-        zero_hash = hash_elems(self.extended_hash)
+        zero_hash = number.hash_elems(self.extended_hash)
 
-        if not equals(int(zero_hash), int(first_hash)):
+        if not number.equals(int(zero_hash), int(first_hash)):
             error = self.set_error()
 
         # verify the closing hash, H-bar = H(Hl, 'CLOSE')
-        closing_hash_computed = hash_elems(last_hash, 'CLOSE')
+        closing_hash_computed = number.hash_elems(last_hash, 'CLOSE')
 
         return not error
 
@@ -172,9 +173,9 @@ class BallotEncryptionVerifier(IBallotVerifier):
         crypto_hash = self.ballot_dic.get('crypto_hash')
         prev_hash, curr_hash = self.get_tracking_hash()
         timestamp = self.get_timestamp()
-        curr_hash_computed = hash_elems(prev_hash, timestamp, crypto_hash)
+        curr_hash_computed = number.hash_elems(prev_hash, timestamp, crypto_hash)
 
-        res = equals(int(curr_hash), int(curr_hash_computed))
+        res = number.equals(int(curr_hash), int(curr_hash_computed))
         return res
 
     def get_tracking_hash(self) -> Tuple[str, str]:
@@ -200,7 +201,6 @@ class BallotContestVerifier(IContestVerifier):
 
     Method:
         verify_a_contest()
-
     """
 
     def __init__(self, contest_dic: dict, param_g: ParameterGenerator, limit_counter: VoteLimitCounter):
@@ -260,7 +260,7 @@ class BallotContestVerifier(IContestVerifier):
             limit_error = self.set_error()
 
         # calculate c = H(Q-bar, (A,B), (a,b))
-        challenge_computed = hash_elems(self.extended_hash, selection_alpha_product, selection_beta_product,
+        challenge_computed = number.hash_elems(self.extended_hash, selection_alpha_product, selection_beta_product,
                                                self.contest_alpha, self.contest_beta)
 
         # check if given contest challenge matches the computation
@@ -290,7 +290,7 @@ class BallotContestVerifier(IContestVerifier):
         check if the contest response value is within set zq
         :return: True if it's within set zq, False otherwise
         """
-        res = is_within_set_zq(self.contest_response)
+        res = number.is_within_set_zq(self.contest_response)
         if not res:
             print("Contest response error. ")
         return res
@@ -301,7 +301,7 @@ class BallotContestVerifier(IContestVerifier):
         :param challenge_computed: the computed challenge using hash
         :return: True if the given and computed values are the same, False if not
         """
-        res = equals(challenge_computed, self.contest_challenge)
+        res = number.equals(challenge_computed, self.contest_challenge)
 
         if not res:
             print("Contest challenge error. ")
@@ -317,10 +317,10 @@ class BallotContestVerifier(IContestVerifier):
         :return: True if the equation is satisfied, False if not
         """
         left = pow(self.generator, self.contest_response, self.large_prime)
-        right = mod_p(mod_p(self.contest_alpha) *
+        right = number.mod_p(number.mod_p(self.contest_alpha) *
                              pow(alpha_product, self.contest_challenge, self.large_prime))
 
-        res = equals(left, right)
+        res = number.equals(left, right)
         if not res:
             print("Contest selection limit check equation 1 error. ")
 
@@ -335,12 +335,12 @@ class BallotContestVerifier(IContestVerifier):
         :param votes_allowed: the maximum votes allowed for this contest
         :return: True if the equation is satisfied, False if not
         """
-        left = mod_p(pow(self.generator, mod_q(votes_allowed * self.contest_challenge), self.large_prime)
+        left = number.mod_p(pow(self.generator, number.mod_q(votes_allowed * self.contest_challenge), self.large_prime)
                             * pow(self.public_key, self.contest_response, self.large_prime))
 
-        right = mod_p(self.contest_beta * pow(beta_product, self.contest_challenge, self.large_prime))
+        right = number.mod_p(self.contest_beta * pow(beta_product, self.contest_challenge, self.large_prime))
 
-        res = equals(left, right)
+        res = number.equals(left, right)
         if not res:
             print("contest selection limit check equation 2 error. ")
 
@@ -355,7 +355,7 @@ class BallotContestVerifier(IContestVerifier):
         """
         vote_limit = int(self.vote_limit_dic.get(contest_name))
 
-        res = equals(vote_limit, num_of_placeholders)
+        res = number.equals(vote_limit, num_of_placeholders)
         if not res:
             print("contest placeholder number error. ")
 
@@ -451,7 +451,7 @@ class BallotSelectionVerifier(ISelectionVerifier):
             error = self.set_error()
 
         # point 2: conduct hash computation, c = H(Q-bar, (alpha, beta), (a0, b0), (a1, b1))
-        challenge = hash_elems(self.extended_hash, self.pad, self.data,
+        challenge = number.hash_elems(self.extended_hash, self.pad, self.data,
                                       zero_pad, zero_data, one_pad, one_data)
 
         # point 4:  c = c0 + c1 mod q is satisfied
@@ -482,7 +482,7 @@ class BallotSelectionVerifier(ISelectionVerifier):
         for (k, v) in param_dic.items():
             # if it's a desired field, verify the number
             if any(name in k for name in self.ZRP_PARAM_NAMES):
-                res = is_within_set_zrp(v)
+                res = number.is_within_set_zrp(v)
                 if not res:
                     error = self.set_error()
                     print('parameter error, {name} is not in set Zrp. '.format(name=k))
@@ -499,7 +499,7 @@ class BallotSelectionVerifier(ISelectionVerifier):
 
         for (k, v) in param_dic.items():
             if any(name in k for name in self.ZQ_PARAM_NAMES):
-                res = is_within_set_zq(v)
+                res = number.is_within_set_zq(v)
                 if not res:
                     error = self.set_error()
                     print('parameter error, {name} is not in set Zq. '.format(name=k))
@@ -525,12 +525,12 @@ class BallotSelectionVerifier(ISelectionVerifier):
         :return: True if both equations of the zero proof are satisfied, False if either is not satisfied
         """
         equ1_left = pow(self.generator, zero_res, self.large_prime)
-        equ1_right = mod_p(int(zero_pad) * pow(pad, zero_chal, self.large_prime))
+        equ1_right = number.mod_p(int(zero_pad) * pow(pad, zero_chal, self.large_prime))
 
         equ2_left = pow(self.public_key, zero_res, self.large_prime)
-        equ2_right = mod_p(int(zero_data) * pow(data, zero_chal, self.large_prime))
+        equ2_right = number.mod_p(int(zero_data) * pow(data, zero_chal, self.large_prime))
 
-        res = equals(equ1_left, equ1_right) and equals(equ2_left, equ2_right)
+        res = number.equals(equ1_left, equ1_right) and number.equals(equ2_left, equ2_right)
 
         if not res:
             print("Chaum-pedersen proof zero proof failure. ")
@@ -556,13 +556,13 @@ class BallotSelectionVerifier(ISelectionVerifier):
         :return: True if both equations of the one proof are satisfied, False if either is not satisfied
         """
         equ1_left = pow(self.generator, one_res, self.large_prime)
-        equ1_right = mod_p(one_pad * pow(pad, one_chal, self.large_prime))
+        equ1_right = number.mod_p(one_pad * pow(pad, one_chal, self.large_prime))
 
-        equ2_left = mod_p(pow(self.generator, one_chal, self.large_prime) *
+        equ2_left = number.mod_p(pow(self.generator, one_chal, self.large_prime) *
                                  pow(self.public_key, one_res, self.large_prime))
-        equ2_right = mod_p(one_data * pow(data, one_chal, self.large_prime))
+        equ2_right = number.mod_p(one_data * pow(data, one_chal, self.large_prime))
 
-        res = equals(equ1_left, equ1_right) and equals(equ2_left, equ2_right)
+        res = number.equals(equ1_left, equ1_right) and number.equals(equ2_left, equ2_right)
 
         if not res:
             print("Chaum-pedersen proof one proof failure. ")
@@ -579,9 +579,9 @@ class BallotSelectionVerifier(ISelectionVerifier):
         :return: True if the hash computation equation is satisfied, False if not
         """
         # calculated expected challenge value: c0 + c1 mod q
-        expected = mod_q(int(zero_chal) + int(one_chal))
+        expected = number.mod_q(int(zero_chal) + int(one_chal))
 
-        res = equals(mod_q(chal), expected)
+        res = number.equals(number.mod_q(chal), expected)
 
         if not res:
             print("challenge value error.")
@@ -602,8 +602,8 @@ class BallotSelectionVerifier(ISelectionVerifier):
         :return: True if a and b both within set Zrp, False if either is not in set Zrp
         """
 
-        a_res = is_within_set_zrp(self.pad)
-        b_res = is_within_set_zrp(self.data)
+        a_res = number.is_within_set_zrp(self.pad)
+        b_res = number.is_within_set_zrp(self.data)
 
         if not a_res:
             print('selection pad/a value error. ')

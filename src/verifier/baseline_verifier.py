@@ -1,4 +1,4 @@
-from .number import mod_q, mod_p, is_prime, equals, is_divisor, is_within_set_zstarp
+from . import number
 from .generator import ParameterGenerator
 from .interfaces import IVerifier
 
@@ -57,14 +57,14 @@ class BaselineVerifier(IVerifier):
         error = self.initialize_error()
 
         # check if p and q are the expected values
-        if not equals(self.large_prime, self.LARGE_PRIME_EXPECTED):
+        if not number.equals(self.large_prime, self.LARGE_PRIME_EXPECTED):
             # if not, use Miller-Rabin algorithm to check the primality of p and q, 5 iterations by default
-            if not is_prime(self.large_prime):
+            if not number.is_prime(self.large_prime):
                 error = self.set_error()
                 print("Large prime value error. ")
 
-        if not equals(self.small_prime, self.SMALL_PRIME_EXPECTED):
-            if not is_prime(self.small_prime):
+        if not number.equals(self.small_prime, self.SMALL_PRIME_EXPECTED):
+            if not number.is_prime(self.small_prime):
                 error = self.set_error()
                 print("Small prime value error. ")
 
@@ -72,22 +72,22 @@ class BaselineVerifier(IVerifier):
         cofactor = self.param_g.get_cofactor()
 
         # check equation p - 1 = qr
-        if not equals(self.large_prime - 1, self.small_prime * cofactor):
+        if not number.equals(self.large_prime - 1, self.small_prime * cofactor):
             error = self.set_error()
             print("p - 1 does not equals to r * q.")
 
         # check q is not a divisor of r
-        if is_divisor(self.small_prime, cofactor):
+        if number.is_divisor(self.small_prime, cofactor):
             error = self.set_error()
             print("q is a divisor of r.")
 
         # check 1 < g < p
-        if not is_within_set_zstarp(self.generator):
+        if not number.is_within_set_zstarp(self.generator):
             error = self.set_error()
             print("g is not in the range of 1 to p. ")
 
         # check g^q mod p = 1
-        if not equals(pow(self.generator, self.small_prime, self.large_prime), 1):
+        if not number.equals(pow(self.generator, self.small_prime, self.large_prime), 1):
             error = self.set_error()
             print("g^q mod p does not equal to 1. ")
 

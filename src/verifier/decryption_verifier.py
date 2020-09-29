@@ -1,7 +1,7 @@
-from interfaces import IVerifier, IContestVerifier, ISelectionVerifier
-from generator import ParameterGenerator, FilePathGenerator, SelectionInfoAggregator
-import number
-from json_parser import read_json_file
+from .interfaces import IVerifier, IContestVerifier, ISelectionVerifier
+from .generator import ParameterGenerator, FilePathGenerator, SelectionInfoAggregator
+from . import number
+from .json_parser import read_json_file
 
 """
 This module does the decryption work on cast ballot tallies and each spoiled ballots.

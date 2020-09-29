@@ -1,7 +1,7 @@
-from .json_parser import read_json_file
+import os
 import glob
 from .number import mod_p
-import os
+from .json_parser import read_json_file
 
 
 class FilePathGenerator:
