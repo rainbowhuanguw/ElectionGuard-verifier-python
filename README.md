@@ -1,9 +1,11 @@
 # ElectionGuard
+![license](https://img.shields.io/github/license/rainbowhuanguw/ElectionGuard-verifier-python)
+![language](https://img.shields.io/badge/language-python3.7.4-blue.svg)
+![issues](https://img.shields.io/github/issues/rainbowhuanguw/ElectionGuard-verifier-python)
+![release](https://img.shields.io/github/v/release/rainbowhuanguw/ElectionGuard-verifier-python?include_prereleases)
+
 This election verifier is part of [Microsoft's ElectionGuard project](https://github.com/microsoft/electionguard), the main purpose of this repository is to implement a consumable, easy-to-use client program for voters, jurisdiction officiers, researchers, educators, and others who are interested.
 The code follows the instruction and requirements of this [specification document](https://github.com/microsoft/electionguard/wiki/Informal/ElectionGuardSpecificationV0.85.pdf).
-
-
-🐍 Language of implementation and version: Python 3.7.4
 
 
 * Design Structure
