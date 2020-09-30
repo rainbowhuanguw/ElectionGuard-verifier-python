@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "verifier"
+name = "uw-election-verifier"
 version = "0.1.0"
 description = ""
 authors = ["rainbowhuanguw <huangc34@uw.edu>"]
@@ -9,6 +9,7 @@ license = "MIT"
 python = "^3.7"
 
 [tool.poetry.dev-dependencies]
+pylint = "^2"
 
 [build-system]
 requires = ["poetry>=0.12"]
