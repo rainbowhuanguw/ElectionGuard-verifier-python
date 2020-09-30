@@ -8,3 +8,6 @@ __pycache__/
 
 # VS Code
 .vscode/
+
+# Distribution
+dist/

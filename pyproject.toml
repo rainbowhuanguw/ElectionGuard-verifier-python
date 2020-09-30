@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "uw-election-verifier"
+name = "verifier"
 version = "0.1.0"
 description = ""
 authors = ["rainbowhuanguw <huangc34@uw.edu>"]
