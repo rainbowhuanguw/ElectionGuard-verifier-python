@@ -1,7 +1,7 @@
 import os
 import glob
-from .number import mod_p
-from .json_parser import read_json_file
+from number import mod_p
+from json_parser import read_json_file
 
 
 class FilePathGenerator:
@@ -11,13 +11,13 @@ class FilePathGenerator:
     remain unchanged.
     """
 
-    def __init__(self, root_folder_path="../data/"):
+    def __init__(self, root_folder_path=''):
         """
         generate a file name generator with parameters from the json files
         """
         self.DATA_FOLDER_PATH = root_folder_path
         self.FILE_TYPE_SUFFIX = '.json'
-        self.FOLDER_SUFFIX = '/'
+        self.FOLDER_SUFFIX = ''
 
     def get_coefficients_folder_path(self) -> str:
         """
@@ -89,84 +89,161 @@ class FilePathGenerator:
         return self.DATA_FOLDER_PATH + '/devices' + self.FILE_TYPE_SUFFIX
 
 
-class ParameterGenerator:
+def get_field_as_int(dic: dict, field: str) -> int:
+    """
+    get a field in the dictionary given key
+    :param dic: data stored in dictionary
+    :param field: key
+    :return: integer representation of the target field if found, if not, return -1
+    """
+    return int(dic.get(field)) if field in dic.keys() else -1
+
+
+class ParameterGetter:
     """
     This class should be responsible for accessing parameters stored in dataset files
     with the help of the file path file generator to locate the files. Parameters in this
     case only include those that are higher than ballot-level. Those that are directly related
     to each specific ballot, contest, or selection will be taken care of by each level of verifiers.
     """
-    def __init__(self, path_g: FilePathGenerator):
+
+    def __init__(self, path_g=None, **kwargs):
         """
         initializer
         :param path_g: FilePathGenerator that helps to get the paths of files
         """
         self.path_g = path_g
+        self.data = kwargs
 
     def get_context(self) -> dict:
         """
         get all context information as a dictionary
         :return: a dictionary of context info
         """
-        context_path = self.path_g.get_context_file_path()
-        return read_json_file(context_path)
+        if self.path_g is not None and isinstance(self.path_g, FilePathGenerator):
+            context_path = self.path_g.get_context_file_path()
+            return read_json_file(context_path)
+        if "context" in self.data.keys():
+            context_path = self.data.get("context")
+            return read_json_file(context_path)
+        return {}
 
     def get_constants(self) -> dict:
         """
         get all constants as a dictionary
         :return: a dictionary of constants info
         """
-        constants_path = self.path_g.get_constants_file_path()
-        return read_json_file(constants_path)
+        if self.path_g is not None and isinstance(self.path_g, FilePathGenerator):
+            constants_path = self.path_g.get_constants_file_path()
+            return read_json_file(constants_path)
+        if "constants" in self.data.keys():
+            constants_path = self.data.get("constants")
+            return read_json_file(constants_path)
+        return {}
+
+    def get_description(self) -> dict:
+        """
+        get the election description information as dictionary
+        :return: a dictionary representation of the description.json
+        """
+        if self.path_g is not None and isinstance(self.path_g, FilePathGenerator):
+            description_path = self.path_g.get_description_file_path()
+            return read_json_file(description_path)
+        if "description" in self.data.keys():
+            description_path = self.data.get("description")
+            return read_json_file(description_path)
+        return {}
+
+    def check_constants_file(self) -> bool:
+        """
+        check if the given constants.json has all the desired fields, including large prime, small prime, generator,
+        cofactor
+        :return: True if the file has all these fields
+        """
+        if not bool(self.get_constants()):
+            return False
+        return (self.get_large_prime() != -1 and self.get_small_prime() != -1
+                and self.get_generator() != -1 and self.get_cofactor() != -1)
+
+    def check_context_file(self) -> bool:
+        """
+        check if the given context.json has all the desired fields, including extended hash, base hash,
+        elgamal public key, quorum, number of guardians
+        :return: True if the file has all these fields
+        """
+        if not bool(self.get_context()):
+            return False
+        return (self.get_base_hash() != -1 and self.get_extended_hash() != -1
+                and self.get_elgamal_key() != -1 and self.get_quorum() != -1 and self.get_num_of_guardians() != -1)
+
+    def check_description_file(self) -> bool:
+        """
+        check if the given description.json file has all the desired fields, including: ballot styles, candidates,
+        contact_information, contests, election_scope_id, start_date, end_date, geopolitical_units, name, parties, type.
+        hardcoded here
+        :return:
+        """
+        # TODO: how to avoid hardcode
+        if not bool(self.get_description()):
+            return False
+        return {'ballot_styles', 'candidates', 'contact_information', 'contests', 'election_scope_id', 'start_date',
+                'end_date', 'geopolitical_units', 'name', 'type'}.issubset(self.get_description().keys())
 
     def get_generator(self) -> int:
         """
         get generator, set default name to be generator
         :return: generator 'g' in integer
         """
-        return int(self.get_constants().get('generator'))
+        return get_field_as_int(self.get_constants(), 'generator')
 
     def get_large_prime(self) -> int:
         """
         get large prime p
         :return: large prime 'p' in integer
         """
-        return int(self.get_constants().get('large_prime'))
+        return get_field_as_int(self.get_constants(), 'large_prime')
 
     def get_small_prime(self) -> int:
         """
         get small prime q
         :return: small prime 'q' in integer
         """
-        return int(self.get_constants().get('small_prime'))
+        return get_field_as_int(self.get_constants(), 'small_prime')
 
     def get_cofactor(self) -> int:
         """
         get cofactor r
         :return: cofactor 'r' in integer
         """
-        return int(self.get_constants().get('cofactor'))
+        return get_field_as_int(self.get_constants(), 'cofactor')
 
     def get_extended_hash(self) -> int:
         """
         get extended base hash Q-bar
         :return: extended base hash Q-bar in integer
         """
-        return int(self.get_context().get('crypto_extended_base_hash'))
+        return get_field_as_int(self.get_context(), 'crypto_extended_base_hash')
 
     def get_base_hash(self) -> int:
         """
         get extended base hash Q
         :return: base hash Q in integer
         """
-        return int(self.get_context().get('crypto_base_hash'))
+        return get_field_as_int(self.get_context(), 'crypto_base_hash')
 
     def get_elgamal_key(self) -> int:
         """
         get Elgamal key K
         :return: Elgamal key K in integer
         """
-        return int(self.get_context().get('elgamal_public_key'))
+        return get_field_as_int(self.get_context(), 'elgamal_public_key')
+
+    def get_quorum(self) -> int:
+        """
+        get the minimum number of presenting guardians in this election
+        :return: the minimum number of presenting guardians in integer
+        """
+        return get_field_as_int(self.get_context(), 'quorum')
 
     def get_public_key_of_a_guardian(self, index: int) -> int:
         """
@@ -186,54 +263,13 @@ class ParameterGenerator:
         num_of_guardians = self.get_num_of_guardians()
         return [self.get_public_key_of_a_guardian(i) for i in range(num_of_guardians)]
 
-    def get_description(self) -> dict:
-        """
-        get the election description information as dictionary
-        :return: a dictionary representation of the description.json
-        """
-        file_path = self.path_g.get_description_file_path()
-        return read_json_file(file_path)
-
     def get_num_of_guardians(self) -> int:
         """
         check consistency and return the number of guardians of this election
         :return: number of guardians in integer if the number is the same from context file and coefficient folder
                 if the number is inconsistent, returns -1
         """
-        num_context = self.__get_num_of_guardians_from_context()
-        num_coeff = self.__get_num_of_guardians_from_file()
-        if num_context == num_coeff:
-            return num_context
-        else:
-            print("Number of guardian error. ")
-            return -1
-
-    def __get_num_of_guardians_from_context(self) -> int:
-        """
-        get number of guardians from the context.json
-        :return: number of guardians n in integer
-        """
-        context_file_path = self.path_g.get_context_file_path()
-        context = read_json_file(context_file_path)
-        return int(context.get('number_of_guardians'))
-
-    def __get_num_of_guardians_from_file(self) -> int:
-        """
-        get number of guardians from the number of coefficient files in the coefficients folder
-        :return: number of guardians n in integer
-        """
-        coeff_folder_path = self.path_g.get_coefficients_folder_path()
-        coeff_files = next(os.walk(coeff_folder_path))[2]
-        return len(coeff_files)
-
-    def get_quorum(self) -> int:
-        """
-        get the minimum number of presenting guardians in this election
-        :return: the minimum number of presenting guardians in integer
-        """
-        context_file_path = self.path_g.get_context_file_path()
-        context = read_json_file(context_file_path)
-        return int(context.get('quorum'))
+        return get_field_as_int(self.get_context(), 'number_of_guardians')
 
     def get_num_of_ballots(self) -> int:
         """
@@ -281,7 +317,8 @@ class VoteLimitCounter:
     This VoteLimitCounter class keeps track of the vote limits of all the contests in an election, generates a
     dictionary of "contest name - maximum votes allowed" pairs. Used in the encryption verifier.
     """
-    def __init__(self, param_g: ParameterGenerator):
+
+    def __init__(self, param_g: ParameterGetter):
         self.description_dic = param_g.get_description()
         self.contest_vote_limits = {}
 
@@ -315,13 +352,14 @@ class SelectionInfoAggregator:
      in one place. Its final purpose is to create a list of dictionaries, each dictionary stands for a contest, inside a
      dictionary are corresponding selection name and its alpha or beta values. Used in decryption verifier.
     """
-    def __init__(self, path_g: FilePathGenerator, param_g: ParameterGenerator):
+
+    def __init__(self, path_g: FilePathGenerator, param_g: ParameterGetter):
         self.param_g = param_g
         self.path_g = path_g
-        self.order_names_dic = {}   # a dictionary to store the contest names and its sequence
+        self.order_names_dic = {}  # a dictionary to store the contest names and its sequence
         self.names_order_dic = {}
         self.contest_selection_names = {}  # a dictionary to store the contest names and its selection names
-        self.dics_by_contest = []   # a list to store all the dics, length = 2 * contest_names
+        self.dics_by_contest = []  # a list to store all the dics, length = 2 * contest_names
         self.total_pad_dic = {}
         self.total_data_dic = {}
 
@@ -501,9 +539,3 @@ class SelectionInfoAggregator:
             self.__fill_total_pad_data()
 
         return self.total_data_dic
-
-
-
-
-
-
