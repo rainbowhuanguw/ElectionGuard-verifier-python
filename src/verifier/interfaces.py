@@ -1,4 +1,4 @@
-from .generator import ParameterGenerator, VoteLimitCounter
+from .generator import ParameterGetter, VoteLimitCounter
 
 
 class IVerifier:
@@ -20,7 +20,7 @@ class IVerifier:
         ShareVerifier
     """
 
-    def __init__(self, param_g: ParameterGenerator):
+    def __init__(self, param_g: ParameterGetter):
 
         self.param_g = param_g
         self.generator = self.param_g.get_generator()
@@ -57,7 +57,7 @@ class IBallotVerifier(IVerifier):
         DecryptionVerifier
     """
 
-    def __init__(self, param_g: ParameterGenerator, limit_counter: VoteLimitCounter):
+    def __init__(self, param_g: ParameterGetter, limit_counter: VoteLimitCounter):
         super().__init__(param_g)
         self.limit_counter = limit_counter
 

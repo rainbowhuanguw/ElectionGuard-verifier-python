@@ -1,6 +1,6 @@
-from . import number
-from .generator import ParameterGenerator
-from .interfaces import IVerifier
+import number
+from generator import ParameterGetter
+from interfaces import IVerifier
 
 """
 This module is for checking the given baseline parameters, as mentioned in the specification document in green box 1. 
@@ -25,7 +25,7 @@ class BaselineVerifier(IVerifier):
         verify_all_params()
     """
 
-    def __init__(self, param_g: ParameterGenerator):
+    def __init__(self, param_g: ParameterGetter):
         super().__init__(param_g)
 
         # constants

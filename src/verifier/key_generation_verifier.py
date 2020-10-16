@@ -1,7 +1,7 @@
-from .json_parser import read_json_file
-from .number import mod_p, equals, hash_elems
-from .generator import ParameterGenerator, FilePathGenerator
-from .interfaces import IVerifier
+from json_parser import read_json_file
+from number import mod_p, equals, hash_elems
+from generator import ParameterGetter, FilePathGenerator
+from interfaces import IVerifier
 
 
 class KeyGenerationVerifier(IVerifier):
@@ -9,7 +9,7 @@ class KeyGenerationVerifier(IVerifier):
     This class checks the key generation information are given correctly for each guardian. (box 2)
     """
 
-    def __init__(self, param_g: ParameterGenerator, path_g: FilePathGenerator):
+    def __init__(self, param_g: ParameterGetter, path_g: FilePathGenerator):
         super().__init__(param_g)
         self.path_g = path_g
         self.num_of_guardians = param_g.get_num_of_guardians()

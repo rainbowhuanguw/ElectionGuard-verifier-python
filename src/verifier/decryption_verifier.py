@@ -1,7 +1,7 @@
-from .interfaces import IVerifier, IContestVerifier, ISelectionVerifier
-from .generator import ParameterGenerator, FilePathGenerator, SelectionInfoAggregator
-from . import number
-from .json_parser import read_json_file
+from interfaces import IVerifier, IContestVerifier, ISelectionVerifier
+from generator import ParameterGetter, FilePathGenerator, SelectionInfoAggregator
+import number
+from json_parser import read_json_file
 
 """
 This module does the decryption work on cast ballot tallies and each spoiled ballots.
@@ -34,7 +34,7 @@ class DecryptionVerifier(IVerifier):
         verify_all_spoiled_ballots()
     """
 
-    def __init__(self, path_g: FilePathGenerator, param_g: ParameterGenerator):
+    def __init__(self, path_g: FilePathGenerator, param_g: ParameterGetter):
         super().__init__(param_g)
         self.path_g = path_g
         self.tally_dic = read_json_file(path_g.get_tally_file_path())
@@ -178,7 +178,7 @@ class DecryptionContestVerifier(IContestVerifier):
         verify_a_contest()
     """
 
-    def __init__(self, contest_dic: dict, param_g: ParameterGenerator):
+    def __init__(self, contest_dic: dict, param_g: ParameterGetter):
         super().__init__(param_g)
         self.contest_dic = contest_dic
         self.public_keys = param_g.get_public_keys_of_all_guardians()
@@ -218,7 +218,7 @@ class DecryptionSelectionVerifier(ISelectionVerifier):
         get_data()
         verify_a_selection()
     """
-    def __init__(self, selection_dic: dict, param_g: ParameterGenerator):
+    def __init__(self, selection_dic: dict, param_g: ParameterGetter):
         super().__init__(param_g)
         self.selection_dic = selection_dic
         self.selection_id = selection_dic.get('object_id')
@@ -265,7 +265,7 @@ class ShareVerifier(IVerifier):
         verify_all_shares()
     """
 
-    def __init__(self, shares: list, param_g: ParameterGenerator, selection_pad: int, selection_data: int):
+    def __init__(self, shares: list, param_g: ParameterGetter, selection_pad: int, selection_data: int):
         # calls IVerifier init
         super().__init__(param_g)
 

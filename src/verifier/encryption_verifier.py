@@ -1,9 +1,9 @@
 import glob
 from typing import Tuple
-from . import number
-from .json_parser import read_json_file
-from .generator import ParameterGenerator, FilePathGenerator, VoteLimitCounter
-from .interfaces import IBallotVerifier, IContestVerifier, ISelectionVerifier
+import number
+from json_parser import read_json_file
+from generator import ParameterGenerator, FilePathGenerator, VoteLimitCounter
+from interfaces import IBallotVerifier, IContestVerifier, ISelectionVerifier
 
 
 """
