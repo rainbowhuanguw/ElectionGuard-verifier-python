@@ -2,7 +2,7 @@ import glob
 from typing import Tuple
 import number
 from json_parser import read_json_file
-from generator import ParameterGenerator, FilePathGenerator, VoteLimitCounter
+from generator import ParameterGetter, FilePathGenerator, VoteLimitCounter
 from interfaces import IBallotVerifier, IContestVerifier, ISelectionVerifier
 
 
@@ -31,7 +31,7 @@ class AllBallotsVerifier(IBallotVerifier):
         verify_tracking_hashes()
     """
 
-    def __init__(self, param_g: ParameterGenerator, path_g: FilePathGenerator, limit_counter: VoteLimitCounter):
+    def __init__(self, param_g: ParameterGetter, path_g: FilePathGenerator, limit_counter: VoteLimitCounter):
         super().__init__(param_g, limit_counter)
         self.path_g = path_g
         self.folder_path = path_g.get_encrypted_ballot_folder_path()
@@ -133,7 +133,7 @@ class BallotEncryptionVerifier(IBallotVerifier):
         verify_tracking_hash()
     """
 
-    def __init__(self, ballot_dic: dict, param_g: ParameterGenerator, limit_counter: VoteLimitCounter):
+    def __init__(self, ballot_dic: dict, param_g: ParameterGetter, limit_counter: VoteLimitCounter):
         super().__init__(param_g, limit_counter)
         self.ballot_dic = ballot_dic
 
@@ -203,7 +203,7 @@ class BallotContestVerifier(IContestVerifier):
         verify_a_contest()
     """
 
-    def __init__(self, contest_dic: dict, param_g: ParameterGenerator, limit_counter: VoteLimitCounter):
+    def __init__(self, contest_dic: dict, param_g: ParameterGetter, limit_counter: VoteLimitCounter):
         super().__init__(param_g)  # calls IVerifier init
         self.limit_counter = limit_counter
         self.vote_limit_dic = limit_counter.get_contest_vote_limits()
@@ -387,7 +387,7 @@ class BallotSelectionVerifier(ISelectionVerifier):
 
     """
 
-    def __init__(self, selection_dic: dict, param_g: ParameterGenerator):
+    def __init__(self, selection_dic: dict, param_g: ParameterGetter):
         super().__init__(param_g)
         # constants
         self.ZRP_PARAM_NAMES = {'pad', 'data'}
