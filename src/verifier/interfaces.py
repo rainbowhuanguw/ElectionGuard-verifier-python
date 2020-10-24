@@ -1,4 +1,4 @@
-from .generator import ParameterGetter, VoteLimitCounter
+from generator import ParameterGetter, VoteLimitCounter, FileReader
 
 
 class IVerifier:
@@ -20,14 +20,13 @@ class IVerifier:
         ShareVerifier
     """
 
-    def __init__(self, param_g: ParameterGetter):
-
-        self.param_g = param_g
-        self.generator = self.param_g.get_generator()
-        self.extended_hash = self.param_g.get_extended_hash()
-        self.public_key = self.param_g.get_elgamal_key()
-        self.large_prime = self.param_g.get_large_prime()
-        self.small_prime = self.param_g.get_small_prime()
+    def __init__(self, param_getter: ParameterGetter):
+        self.param_getter = param_getter
+        self.generator = self.param_getter.get_generator()
+        self.extended_hash = self.param_getter.get_extended_hash()
+        self.public_key = self.param_getter.get_elgamal_key()
+        self.large_prime = self.param_getter.get_large_prime()
+        self.small_prime = self.param_getter.get_small_prime()
 
     @staticmethod
     def set_error() -> bool:
@@ -57,8 +56,8 @@ class IBallotVerifier(IVerifier):
         DecryptionVerifier
     """
 
-    def __init__(self, param_g: ParameterGetter, limit_counter: VoteLimitCounter):
-        super().__init__(param_g)
+    def __init__(self, param_getter: ParameterGetter, limit_counter: VoteLimitCounter):
+        super().__init__(param_getter)
         self.limit_counter = limit_counter
 
 

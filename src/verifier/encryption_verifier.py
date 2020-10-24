@@ -2,7 +2,7 @@ import glob
 from typing import Tuple
 import number
 from json_parser import read_json_file
-from generator import ParameterGetter, FilePathGenerator, VoteLimitCounter
+from generator import ParameterGetter, VoteLimitCounter, FileReader
 from interfaces import IBallotVerifier, IContestVerifier, ISelectionVerifier
 
 
@@ -31,10 +31,14 @@ class AllBallotsVerifier(IBallotVerifier):
         verify_tracking_hashes()
     """
 
-    def __init__(self, param_g: ParameterGetter, path_g: FilePathGenerator, limit_counter: VoteLimitCounter):
-        super().__init__(param_g, limit_counter)
-        self.path_g = path_g
-        self.folder_path = path_g.get_encrypted_ballot_folder_path()
+    def __init__(self, file_reader: FileReader, param_getter: ParameterGetter, limit_counter: VoteLimitCounter,
+                 **kwargs):
+        """
+        :**kwargs: folder_path -> str, file_paths -> list
+        """
+        super().__init__(param_getter, limit_counter)
+        self.file_reader = file_reader
+        self.data_source = kwargs
 
     def verify_all_ballots(self) -> bool:
         """
@@ -45,10 +49,14 @@ class AllBallotsVerifier(IBallotVerifier):
         count = 0
         tracking_hashes = {}
 
-        for ballot_file in glob.glob(self.folder_path + '*.json'):
+        ballot_dics = self.file_reader.get_ballot_files()
+
+        # uses data folder
+        for ballot_dic in ballot_dics:
+                #glob.glob(self.data_source['folder'] + '*.json'):
             # verify all ballots, box 3 & 4
-            ballot_dic = read_json_file(ballot_file)
-            bev = BallotEncryptionVerifier(ballot_dic, self.param_g, self.limit_counter)
+            #ballot_dic = read_json_file(ballot_file)
+            bev = BallotEncryptionVerifier(ballot_dic, self.param_getter, self.limit_counter)
 
             # verify correctness
             contest_res = bev.verify_all_contests()
@@ -133,8 +141,9 @@ class BallotEncryptionVerifier(IBallotVerifier):
         verify_tracking_hash()
     """
 
-    def __init__(self, ballot_dic: dict, param_g: ParameterGetter, limit_counter: VoteLimitCounter):
-        super().__init__(param_g, limit_counter)
+    def __init__(self, ballot_dic: dict, param_getter: ParameterGetter,
+                 limit_counter: VoteLimitCounter):
+        super().__init__(param_getter, limit_counter)
         self.ballot_dic = ballot_dic
 
     def verify_all_contests(self) -> bool:
@@ -148,7 +157,7 @@ class BallotEncryptionVerifier(IBallotVerifier):
         contests = self.ballot_dic.get('contests')
 
         for contest in contests:
-            cv = BallotContestVerifier(contest, self.param_g, self.limit_counter)
+            cv = BallotContestVerifier(contest, self.param_getter, self.limit_counter)
             encrypt_res, limit_res = cv.verify_a_contest()
             if not encrypt_res:
                 encrypt_error = self.set_error()
@@ -203,8 +212,8 @@ class BallotContestVerifier(IContestVerifier):
         verify_a_contest()
     """
 
-    def __init__(self, contest_dic: dict, param_g: ParameterGetter, limit_counter: VoteLimitCounter):
-        super().__init__(param_g)  # calls IVerifier init
+    def __init__(self, contest_dic: dict, param_getter: ParameterGetter, limit_counter: VoteLimitCounter):
+        super().__init__(param_getter)  # calls IVerifier init
         self.limit_counter = limit_counter
         self.vote_limit_dic = limit_counter.get_contest_vote_limits()
 
@@ -234,11 +243,11 @@ class BallotContestVerifier(IContestVerifier):
         for selection in selections_list:
             # verify encryption correctness on every selection  - selection check
             # create selection verifiers
-            sv = BallotSelectionVerifier(selection, self.param_g)
+            sv = BallotSelectionVerifier(selection, self.param_getter)
 
             # get alpha, beta products
-            selection_alpha_product = selection_alpha_product * int(sv.get_pad()) % int(self.param_g.get_large_prime())
-            selection_beta_product = selection_beta_product * int(sv.get_data()) % int(self.param_g.get_large_prime())
+            selection_alpha_product = selection_alpha_product * int(sv.get_pad()) % int(self.param_getter.get_large_prime())
+            selection_beta_product = selection_beta_product * int(sv.get_data()) % int(self.param_getter.get_large_prime())
 
             # check validity of a selection
             is_correct = sv.verify_selection_validity()
@@ -387,8 +396,8 @@ class BallotSelectionVerifier(ISelectionVerifier):
 
     """
 
-    def __init__(self, selection_dic: dict, param_g: ParameterGetter):
-        super().__init__(param_g)
+    def __init__(self, selection_dic: dict, param_getter: ParameterGetter):
+        super().__init__(param_getter)
         # constants
         self.ZRP_PARAM_NAMES = {'pad', 'data'}
         self.ZQ_PARAM_NAMES = {'challenge', 'response'}

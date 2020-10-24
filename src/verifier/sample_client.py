@@ -1,8 +1,8 @@
-from .decryption_verifier import DecryptionVerifier
-from .generator import FilePathGenerator, ParameterGenerator, VoteLimitCounter
-from .baseline_verifier import BaselineVerifier
-from .key_generation_verifier import KeyGenerationVerifier
-from .encryption_verifier import AllBallotsVerifier
+from decryption_verifier import DecryptionVerifier
+from generator import FilePathGenerator, ParameterGenerator, VoteLimitCounter
+from baseline_verifier import BaselineVerifier
+from key_generation_verifier import KeyGenerationVerifier
+from encryption_verifier import AllBallotsVerifier
 
 if __name__ == '__main__':
     # set up

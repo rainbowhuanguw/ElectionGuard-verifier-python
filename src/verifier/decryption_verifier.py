@@ -34,8 +34,8 @@ class DecryptionVerifier(IVerifier):
         verify_all_spoiled_ballots()
     """
 
-    def __init__(self, path_g: FilePathGenerator, param_g: ParameterGetter):
-        super().__init__(param_g)
+    def __init__(self, path_g: FilePathGenerator, param_getter: ParameterGetter):
+        super().__init__(param_getter)
         self.path_g = path_g
         self.tally_dic = read_json_file(path_g.get_tally_file_path())
         self.contests = self.tally_dic.get('contests')
@@ -62,7 +62,7 @@ class DecryptionVerifier(IVerifier):
 
         # confirm that the aggregate encryption are the accumulative product of all
         # corresponding encryption on all cast ballots
-        aggregator = SelectionInfoAggregator(self.path_g, self.param_g)
+        aggregator = SelectionInfoAggregator(self.path_g, self.param_getter)
         total_res = self.__match_total_across_ballots(aggregator, contest_names)
         if not total_res:
             total_error = self.set_error()
@@ -153,7 +153,7 @@ class DecryptionVerifier(IVerifier):
         error = self.initialize_error()
         for contest_name in contest_names:
             contest = contest_dic.get(contest_name)
-            tcv = DecryptionContestVerifier(contest, self.param_g)
+            tcv = DecryptionContestVerifier(contest, self.param_getter)
             if not tcv.verify_a_contest():
                 error = self.set_error()
 
@@ -178,10 +178,10 @@ class DecryptionContestVerifier(IContestVerifier):
         verify_a_contest()
     """
 
-    def __init__(self, contest_dic: dict, param_g: ParameterGetter):
-        super().__init__(param_g)
+    def __init__(self, contest_dic: dict, param_getter: ParameterGetter):
+        super().__init__(param_getter)
         self.contest_dic = contest_dic
-        self.public_keys = param_g.get_public_keys_of_all_guardians()
+        self.public_keys = param_getter.get_public_keys_of_all_guardians()
         self.selections = self.contest_dic.get('selections')
         self.selection_names = list(self.selections.keys())
         self.contest_id = self.contest_dic.get('object_id')
@@ -195,7 +195,7 @@ class DecryptionContestVerifier(IContestVerifier):
         error = self.initialize_error()
         for selection_name in self.selection_names:
             selection = self.selections.get(selection_name)
-            tsv = DecryptionSelectionVerifier(selection, self.param_g)
+            tsv = DecryptionSelectionVerifier(selection, self.param_getter)
             if not tsv.verify_a_selection():
                 error = self.set_error()
 
@@ -218,13 +218,13 @@ class DecryptionSelectionVerifier(ISelectionVerifier):
         get_data()
         verify_a_selection()
     """
-    def __init__(self, selection_dic: dict, param_g: ParameterGetter):
-        super().__init__(param_g)
+    def __init__(self, selection_dic: dict, param_getter: ParameterGetter):
+        super().__init__(param_getter)
         self.selection_dic = selection_dic
         self.selection_id = selection_dic.get('object_id')
         self.pad = int(self.selection_dic.get('message', {}).get('pad'))
         self.data = int(self.selection_dic.get('message', {}).get('data'))
-        self.public_keys = param_g.get_public_keys_of_all_guardians()
+        self.public_keys = param_getter.get_public_keys_of_all_guardians()
 
     def get_pad(self) -> int:
         """
@@ -246,7 +246,7 @@ class DecryptionSelectionVerifier(ISelectionVerifier):
         :return: true if no error has found in any share verification of this selection, false otherwise
         """
         shares = self.selection_dic.get('shares')
-        sv = ShareVerifier(shares, self.param_g, self.pad, self.data)
+        sv = ShareVerifier(shares, self.param_getter, self.pad, self.data)
         res = sv.verify_all_shares()
         if not res:
             print(self.selection_id + " tally verification error. ")
@@ -265,14 +265,14 @@ class ShareVerifier(IVerifier):
         verify_all_shares()
     """
 
-    def __init__(self, shares: list, param_g: ParameterGetter, selection_pad: int, selection_data: int):
+    def __init__(self, shares: list, param_getter: ParameterGetter, selection_pad: int, selection_data: int):
         # calls IVerifier init
-        super().__init__(param_g)
+        super().__init__(param_getter)
 
         self.shares = shares
         self.selection_pad = selection_pad
         self.selection_data = selection_data
-        self.public_keys = param_g.get_public_keys_of_all_guardians()
+        self.public_keys = param_getter.get_public_keys_of_all_guardians()
 
     def verify_all_shares(self) -> bool:
         """

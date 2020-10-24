@@ -9,12 +9,12 @@ class KeyGenerationVerifier(IVerifier):
     This class checks the key generation information are given correctly for each guardian. (box 2)
     """
 
-    def __init__(self, param_g: ParameterGetter, path_g: FilePathGenerator):
-        super().__init__(param_g)
+    def __init__(self, param_getter: ParameterGetter, path_g: FilePathGenerator):
+        super().__init__(param_getter)
         self.path_g = path_g
-        self.num_of_guardians = param_g.get_num_of_guardians()
-        self.quorum = param_g.get_quorum()
-        self.base_hash = param_g.get_base_hash()
+        self.num_of_guardians = param_getter.get_num_of_guardians()
+        self.quorum = param_getter.get_quorum()
+        self.base_hash = param_getter.get_base_hash()
 
     def verify_all_guardians(self) -> bool:
         """

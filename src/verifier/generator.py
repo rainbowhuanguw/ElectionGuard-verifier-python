@@ -71,23 +71,30 @@ class FilePathGenerator:
         get a path to the encrypted_ballots folder
         :return: a string representation of path to the encrypted_ballots folder
         """
-
         return self.DATA_FOLDER_PATH + 'encrypted_ballots' + self.FOLDER_SUFFIX
+
+    def get_encrypted_ballot_file_paths(self) -> list:
+        """
+        get paths of all encrypted_ballot files
+        :returns: a list of string representation of the path to the encrypted_ballots files
+        """
+        encrypted_ballot_folder_path = self.get_spoiled_ballot_folder_path()
+        return glob.glob(encrypted_ballot_folder_path + "/*.json")
 
     def get_spoiled_ballot_folder_path(self) -> str:
         """
         get a path to the spoiled_ballots folder
         :return: a string representation of path to the spoiled_ballots folder
         """
-        return self.DATA_FOLDER_PATH + '/spoiled_ballots' + self.FILE_TYPE_SUFFIX
+        return self.DATA_FOLDER_PATH + '/spoiled_ballots' + self.FOLDER_SUFFIX
 
     def get_spoiled_ballot_file_paths(self) -> list:
         """
         get paths of all spoiled ballot files in the folder
-        :return: a list of string representation of paths to the spoiled_ballots folder
+        :return: a list of string representation of paths to the spoiled_ballots files
         """
         spoiled_ballot_folder_path = self.get_spoiled_ballot_folder_path()
-        return next(os.walk(spoiled_ballot_folder_path))[2]
+        return glob.glob(spoiled_ballot_folder_path + "/*.json")
 
     def get_device_folder_path(self) -> str:
         """
@@ -121,7 +128,7 @@ class FileReader:
         get all context information as a dictionary
         :return: a dictionary of context info
         """
-        if self.__path_g_exists():
+        if self.is_folder_source():
             context_path = self.path_g.get_context_file_path()
             return read_json_file(context_path)
         if "context" in self.data.keys():
@@ -134,7 +141,7 @@ class FileReader:
         get all constants as a dictionary
         :return: a dictionary of constants info
         """
-        if self.__path_g_exists():
+        if self.is_folder_source():
             constants_path = self.path_g.get_constants_file_path()
             return read_json_file(constants_path)
         if "constants" in self.data.keys():
@@ -147,7 +154,7 @@ class FileReader:
         get the election description information as dictionary
         :return: a dictionary representation of the description.json
         """
-        if self.__path_g_exists():
+        if self.is_folder_source():
             description_path = self.path_g.get_description_file_path()
             return read_json_file(description_path)
         if "description" in self.data.keys():
@@ -168,7 +175,7 @@ class FileReader:
         :param indx: guardian index
         :return: a dictionary representation of the coefficients file of a particular guardian of index i
         """
-        if self.__path_g_exists():
+        if self.is_folder_source():
             coefficients_path = self.path_g.get_guardian_coefficient_file_path(indx)
             return read_json_file(coefficients_path)
         if "coefficients" in self.data.keys():
@@ -182,31 +189,56 @@ class FileReader:
         set spoiled ballot file path with input
         :param spoiled_ballot_path: a String representation of the spoiled ballot path
         """
-        if not self.__path_g_exists():
-            self.data["spoiled"] = spoiled_ballot_path
+        self.data["spoiled"] = spoiled_ballot_path
 
     def get_spoiled_ballot_files(self) -> list:
         """
-        get a list of dictionaries of spoiled ballot information
-        :return: a list of dictionary of spoiled ballot
+        get a list of dictionaries of spoiled ballot information.
+        either get from the folder or the input
+        :return: a list of dictionaries of spoiled ballots
         """
-        if self.__path_g_exists():
+        if self.is_folder_source():
             spoiled_paths = self.path_g.get_spoiled_ballot_file_paths()
-            if len(spoiled_paths):
-                return []
-            for path in spoiled_paths:
+            if len(spoiled_paths) != 0:
+                for path in spoiled_paths:
+                    yield read_json_file(path)
+        elif "spoiled" in self.data.keys() and len(self.data["spoiled"]) != 0:
+            spoiled_folder = self.data["spoiled"]
+            paths = glob.glob(spoiled_folder + "/*.json")
+            for path in paths:
                 yield read_json_file(path)
-        else:
-            if "spoiled" not in self.data.keys() or len(self.data["spoiled"]) == 0:
-                return []
-            for path in self.data["spoiled"]:
+        return None
+
+    def set_ballot_files(self, ballot_folder_path: str):
+        """
+        set encrypted ballot file path with input
+        :return: a list of dictionaries of spoiled ballots
+        """
+        self.data["encrypted"] = ballot_folder_path
+
+    def get_ballot_files(self) -> list:
+        """
+        get a list of encrypted ballot file path
+        either get from the folder or the input
+        :returns: a list of dictionaries of encrypted ballots
+        """
+        if self.is_folder_source():
+            ballot_paths = self.path_g.get_encrypted_ballot_file_paths()
+            if len(ballot_paths) != 0:
+                for path in ballot_paths:
+                    yield read_json_file(path)
+        if "encrypted" in self.data.keys() and len(self.data["encrypted"]) != 0:
+            encrypted_folder = self.data["encrypted"]
+            paths = glob.glob(encrypted_folder + "/*.json")
+            for path in paths:
                 yield read_json_file(path)
+        return None
 
     def set_device_file(self, device_file_path: str):
         """
         set the device file path with input
         """
-        if not self.__path_g_exists():
+        if not self.is_folder_source():
             self.data["device"] = device_file_path
 
     def get_device_file(self) -> dict:
@@ -214,7 +246,7 @@ class FileReader:
         return the device information as a dictionary
         :return:
         """
-        if self.__path_g_exists():
+        if self.is_folder_source():
             device_folder_path = self.path_g.get_device_folder_path()
             for file in glob.glob(device_folder_path + '*json'):
                 return read_json_file(file)
@@ -223,10 +255,11 @@ class FileReader:
 
         return {}
 
-    def __path_g_exists(self) -> bool:
+    def is_folder_source(self) -> bool:
         """
-        check if the FilePathGenerator is used in this class
-        :return: True if the FilePathGenerator is passed in to construct a FileReader
+        indicate what is the input source given by the user
+        :return: True if the input is the data is access through file generator with a data folder,
+        False if the inputs are separated data files.
         """
         return self.path_g is not None and isinstance(self.path_g, FilePathGenerator)
 

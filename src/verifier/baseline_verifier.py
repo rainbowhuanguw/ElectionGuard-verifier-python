@@ -25,8 +25,8 @@ class BaselineVerifier(IVerifier):
         verify_all_params()
     """
 
-    def __init__(self, param_g: ParameterGetter):
-        super().__init__(param_g)
+    def __init__(self, param_getter: ParameterGetter):
+        super().__init__(param_getter)
 
         # constants
         self.DICT_KEYS = {'cofactor', 'generator', 'large_prime', 'small_prime'}
@@ -69,7 +69,7 @@ class BaselineVerifier(IVerifier):
                 print("Small prime value error. ")
 
         # get basic parameters
-        cofactor = self.param_g.get_cofactor()
+        cofactor = self.param_getter.get_cofactor()
 
         # check equation p - 1 = qr
         if not number.equals(self.large_prime - 1, self.small_prime * cofactor):
